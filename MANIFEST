@@ -1,0 +1,6 @@
+Build.PL
+Changes
+lib/slot.pm
+MANIFEST
+README
+t/basics.t

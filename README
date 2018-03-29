@@ -1,0 +1,62 @@
+NAME
+
+    slot - a simple, comple-time way to declare a class
+
+SYNOPSIS
+
+      package Point;
+      use Types::Standard -types;
+    
+      use slot x => Int, rw => 1, req => 1;
+      use slot y => Int, rw => 1, req => 1;
+      use slot z => Int, rw => 1, def => 0;
+    
+      1;
+    
+      my $p = Point->new(x => 10, y => 20);
+      $p->x(30); # x is set to 30
+      $p->y;     # 20
+      $p->z;     # 0
+
+DESCRIPTION
+
+    Similar to the fields pragma, slot declares individual fields in a
+    class, additionally building a constructor and slot accessor methods.
+    Inheritence is handled in the traditional way, with @ISA or via base or
+    parent pragmas.
+
+ SLOTS
+
+    The import itself accepts two positional parameters: the slot name and
+    an optional type. The type is validated during construction and in the
+    setter, if the slot is read-write.
+
+OPTIONS
+
+ rw
+
+    When true, the accessor method accepts a single parameter to modify the
+    slot value
+
+ req
+
+    When true, this constructor will croak if the slot is missing from the
+    named parameters passed to the constructor.
+
+ def
+
+    When present, this value or code ref which generates a value is used as
+    the default if the slot is missing from the named parameters passed to
+    the constructor.
+
+AUTHOR
+
+    Jeff Ober <sysread@fastmail.fm>
+
+COPYRIGHT AND LICENSE
+
+    This software is copyright (c) 2018 by Jeff Ober.
+
+    This is free software; you can redistribute it and/or modify it under
+    the same terms as the Perl 5 programming language system itself.
+
