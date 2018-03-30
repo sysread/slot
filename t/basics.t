@@ -9,7 +9,7 @@ use slot baz => req => 1, def => 'fnord';
 
 package AB;
 use Types::Standard -types;
-use parent -norequire, 'A';
+our @ISA = qw(A);
 
 use slot bat => ArrayRef, req => 1;
 
@@ -19,7 +19,6 @@ package main;
 
 use Test2::V0;
 use Test2;
-use Data::Dumper;
 
 # Constructor
 ok my $o = A->new(foo => 1, bar => 'slack', baz => 'bat'), 'ctor';

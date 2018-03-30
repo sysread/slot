@@ -31,9 +31,10 @@ version 0.01
 Similar to the L<fields> pragma, C<slot> declares individual fields in a class,
 building a constructor and slot accessor methods.
 
-Although not nearly as full-featured as L<Moose|other> L<Moo|solutions>,
-C<slot> is very light-weight, fast, and imposes very little in the way of
-dependencies Currently, only the unit tests require non-core packages.
+Although not nearly as full-featured as L<other|Moose> L<solutions|Moo>,
+C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
+dependencies outside of the Perl core distribution. Currently, only the unit
+tests require non-core packages.
 
 C<slot> is intended or use with Perl's bare metal objects. It provides a simple
 mechanism for building accessor and constructor code at compile time.

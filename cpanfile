@@ -1,6 +1,4 @@
 requires 'perl', '5.010';
-
-requires 'parent';
 requires 'Carp';
 
 on test => sub {
