@@ -67,8 +67,8 @@ type. The type is validated during construction and in the setter, if the slot
 is read-write.
 
 Slot names must be valid perl identifiers suitable for subroutine names. Types
-must be an instance of a class that supports the
-C<inline_check|Type::Tiny/Inlining methods> method.
+must be an instance of a class that supports the C<check> and C<inline_check>
+methods (see L<Type::Tiny/Inlining methods>).
 
 =head1 OPTIONS
 
@@ -89,6 +89,10 @@ L<default value|/def>, this attribute is moot.
 When present, this value or code ref which returns a value is used as the
 default if the slot is missing from the named parameters passed to the
 constructor.
+
+If the default is a code ref which generates a value and a type is specified,
+note that the code ref will be called during compilation to validate its type
+rather than re-validating it with every accessor call.
 
 =head1 DEBUGGING
 

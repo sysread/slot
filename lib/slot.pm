@@ -28,11 +28,17 @@ sub import {
   croak "slot ${name}'s type is invalid"
     if defined $type
     && !ref $type
-    && !$type->can('inline_check');
+    && !$type->can('inline_check')
+    && !$type->can('check');
 
   my $rw  = $param{rw}  // 0;
   my $req = $param{req} // 0;
   my $def = $param{def};
+
+  if ($def && $type) {
+    croak "default value for $name is not a valid $type"
+      unless $type->check(ref $def eq 'CODE' ? $def->() : $def);
+  }
 
   unless (exists $CLASS{$caller}) {
     $CLASS{$caller} = {
@@ -136,7 +142,8 @@ sub init \{
     if (defined $slot->{def}) {
       if (ref $slot->{def} eq 'CODE') {
         $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : \$CLASS{$class}{slot}{$name}{def}->(\$self)";
-      } else {
+      }
+      else {
         $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : \$CLASS{$class}{slot}{$name}{def}";
       }
     } else {
@@ -245,8 +252,8 @@ type. The type is validated during construction and in the setter, if the slot
 is read-write.
 
 Slot names must be valid perl identifiers suitable for subroutine names. Types
-must be an instance of a class that supports the
-C<inline_check|Type::Tiny/Inlining methods> method.
+must be an instance of a class that supports the C<check> and C<inline_check>
+methods (see L<Type::Tiny/Inlining methods>).
 
 =head1 OPTIONS
 
@@ -267,6 +274,10 @@ L<default value|/def>, this attribute is moot.
 When present, this value or code ref which returns a value is used as the
 default if the slot is missing from the named parameters passed to the
 constructor.
+
+If the default is a code ref which generates a value and a type is specified,
+note that the code ref will be called during compilation to validate its type
+rather than re-validating it with every accessor call.
 
 =head1 DEBUGGING
 
