@@ -9,11 +9,17 @@ no strict 'refs';
 use Carp;
 
 my %CLASS;
+my $DEBUG;
 
 sub import {
   my $caller = caller;
   my $class  = shift;
   my $name   = shift;
+
+  if ($name eq '-debug') {
+    $DEBUG = 1;
+    return;
+  }
 
   my ($type, %param) = (@_ % 2 == 0)
     ? (undef, @_)
@@ -28,7 +34,44 @@ sub import {
   my $req = $param{req} // 0;
   my $def = $param{def};
 
-  $CLASS{$caller} //= {slot => {}, slots => []};
+  unless (exists $CLASS{$caller}) {
+    $CLASS{$caller} = {
+      slot  => {},
+      slots => [],
+      ctor  => undef,
+    };
+
+    *{ $caller . '::new' } = sub {
+      my ($class, @args) = @_;
+      my $ctor = _build_ctor($caller);
+      my $acc  = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
+      my $pkg  = qq{
+package $caller;
+BEGIN {
+use Carp;
+no warnings 'redefine';
+$ctor
+$acc
+};
+      };
+
+      if ($DEBUG) {
+        print "\n";
+        print "================================================================================\n";
+        print "# slot generated the following code:\n";
+        print "================================================================================\n";
+        print "$pkg\n";
+        print "================================================================================\n";
+        print "# end of slot-generated code\n";
+        print "================================================================================\n";
+        print "\n";
+      }
+
+      eval $pkg;
+      $@ && die $@;
+      $class->new(@args);
+    };
+  }
 
   $CLASS{$caller}{slot}{$name} = {
     type => $type,
@@ -37,25 +80,11 @@ sub import {
     def  => $def,
   };
 
+  $CLASS{$caller}{slot}{$name}{acc}
+    = $rw ? _build_setter($caller, $name)
+          : _build_getter($caller, $name);
+
   push @{ $CLASS{$caller}{slots} }, $name;
-
-  my $ctor = _build_ctor($caller);
-  my $acc  = $rw
-    ? _build_setter($class, $name)
-    : _build_getter($class, $name);
-
-  my $pkg = qq{
-package $caller;
-BEGIN {
-use Carp;
-no warnings 'redefine';
-$ctor
-$acc
-};
-  };
-
-  eval $pkg;
-  $@ && die $@;
 }
 
 sub _build_ctor {
