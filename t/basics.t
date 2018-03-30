@@ -28,9 +28,6 @@ is $o->foo, 1, 'get slot';
 is $o->bar, 'slack', 'get slot';
 is $o->baz, 'bat', 'get slot';
 
-ok dies{ $o->bar('baz') }, 'ro acc dies w/ arg';
-ok dies{ $o->foo(1, 2, 3) }, 'rw acc dies w/ too many args';
-
 # Setters
 is $o->foo(4), 4, 'set slot';
 is $o->foo, 4, 'slot remains set';

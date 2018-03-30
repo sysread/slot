@@ -2,11 +2,17 @@ package slot;
 
 # ABSTRACT: Simple, efficient, comple-time class declaration
 
-use v5.10;
 use strict;
 use warnings;
 no strict 'refs';
 use Carp;
+
+my $XS;
+
+BEGIN {
+  eval 'use Class::XSAccessor';
+  $XS = $@ ? 0 : 1;
+}
 
 my %CLASS;
 my $DEBUG;
@@ -31,13 +37,12 @@ sub import {
     && !$type->can('inline_check')
     && !$type->can('check');
 
-  my $rw  = $param{rw}  // 0;
-  my $req = $param{req} // 0;
-  my $def = $param{def};
+  my $rw  = $param{rw};
+  my $req = $param{req};
 
-  if ($def && $type) {
+  if (exists $param{def} && $type) {
     croak "default value for $name is not a valid $type"
-      unless $type->check(ref $def eq 'CODE' ? $def->() : $def);
+      unless $type->check(ref $param{def} eq 'CODE' ? $param{def}->() : $param{def});
   }
 
   unless (exists $CLASS{$caller}) {
@@ -50,12 +55,12 @@ sub import {
         my $acc  = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
         my $pkg  = qq{
 package $caller;
-BEGIN {
 use Carp;
 no warnings 'redefine';
+BEGIN {
 $ctor
 $acc
-};
+}
         };
 
         if ($DEBUG) {
@@ -86,8 +91,10 @@ $acc
     type => $type,
     rw   => $rw,
     req  => $req,
-    def  => $def,
   };
+
+  $CLASS{$caller}{slot}{$name}{def} = $param{def}
+    if exists $param{def};
 
   $CLASS{$caller}{slot}{$name}{acc}
     = $rw ? _build_setter($caller, $name)
@@ -103,7 +110,7 @@ sub _build_ctor {
 sub new \{
   my \$class = shift;
   my \$param = \@_ == 1 ? \$_[0] : {\@_};
-  my \$self = \@${class}::ISA
+  my \$self  = scalar(\@${class}::ISA) 
     ? \$class->SUPER::new(\$param)
     : bless {}, \$class;
 };
@@ -119,20 +126,22 @@ sub new \{
       my $check = $slot->{type}->inline_check("\$param->{$name}");
 
       $code .= qq{
-  if (exists \$param->{$name}) {
+  if (exists \$param->{$name}) \{
     $check
       || croak '$name did not pass validation as a $slot->{type}';
-  }
+  \}
 
 };
     }
 
     if (defined $slot->{def}) {
+      $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : ";
+
       if (ref $slot->{def} eq 'CODE') {
-        $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : \$CLASS{$class}{slot}{$name}{def}->(\$self)";
+        $code .= "\$CLASS{$class}{slot}{$name}{def}->(\$self)";
       }
       else {
-        $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : \$CLASS{$class}{slot}{$name}{def}";
+        $code .= "\$CLASS{$class}{slot}{$name}{def}";
       }
     } else {
       $code .= "  \$self->{$name} = \$param->{$name}";
@@ -142,7 +151,7 @@ sub new \{
   }
 
   $code .= qq{
-  return \$self;
+  \$self;
 \};
 
 };
@@ -152,42 +161,59 @@ sub new \{
 
 sub _build_getter {
   my ($class, $name) = @_;
-  return qq{
-sub $name \{
-  croak "$name is protected" if \@_ > 1;
-  return \$_[0]->{$name};
-\};
-  };
+  if ($XS) {
+    return _build_getter_xs($class, $name);
+  } else {
+    return _build_getter_pp($class, $name);
+  }
 }
 
 sub _build_setter {
   my ($class, $name) = @_;
   my $slot = $CLASS{$class}{slot}{$name};
 
+  if ($XS && !$slot->{type}) {
+    return _build_setter_xs($class, $name);
+  } else {
+    return _build_setter_pp($class, $name);
+  }
+}
+
+sub _build_getter_pp {
+  my ($class, $name) = @_;
+  return "sub $name { \$_[0]->{$name} }\n";
+}
+
+sub _build_setter_pp {
+  my ($class, $name) = @_;
+  my $slot = $CLASS{$class}{slot}{$name};
+
   my $code = qq{
 sub $name \{
-  if (\@_ > 1) \{
-    croak 'usage: \$self->$name | \$self->$name(\$new_value)'
-      if \@_ != 2;
+  \$_[0]->{$name} = \$_[1]
+    if \@_ > 1
 };
 
   if ($slot->{type}) {
     my $check = $slot->{type}->inline_check('$_[1]');
-    $code .= qq{
-    $check
-      || croak 'value did not pass validation as a $slot->{type}';
-};
+    $code .= "    && ($check || croak '$name expected value of type $slot->{type}');\n";
+  } else {
+    $code .= ";\n";
   }
 
-  $code .= qq{
-    \$_[0]->{$name} = \$_[1];
-  \}
-
-  \$_[0]->{$name};
-\}
-};
+  $code .= "  \$_[0]->{$name}\n}\n";
 
   return $code;
+}
+
+sub _build_getter_xs {
+  my ($class, $name) = @_;
+  return "use Class::XSAccessor getters => {'$name' => '$name'}, replace => 1, class => '$class';\n";
+}
+
+sub _build_setter_xs {
+  my ($class, $name) = @_;
+  return "use Class::XSAccessor accessors => {'$name' => '$name'}, replace => 1, class => '$class';\n";
 }
 
 =head1 SYNOPSIS
