@@ -17,16 +17,17 @@ before_install:
    - git clone git://github.com/haarg/perl-travis-helper
    - source perl-travis-helper/init
    - build-perl
-   - cd $BUILD_DIR
    - perl -V
-   - cpanm --notest --quiet Module::Build
-   - perl Build.PL
+   - build-dist
+   - cd $BUILD_DIR
 
 install:
-   - ./Build installdeps
+   - export RELEASE_TESTING=1 AUTOMATED_TESTING=1 AUTHOR_TESTING=1 HARNESS_OPTIONS=c HARNESS_TIMER=1
+   - cpanm --quiet --notest Devel::Cover::Report::Coveralls
+   - cpanm --quiet --notest --installdeps .
 
 script:
-   - ./Build test verbose=1
+  perl Makefile.PL && make test
 
 notifications:
   email: false
