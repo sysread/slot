@@ -4,7 +4,7 @@
 
 =head1 NAME
 
-slot - A simple, comple-time way to declare a class
+slot - Simple, efficient, comple-time class declaration
 
 =head1 VERSION
 

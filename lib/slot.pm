@@ -1,6 +1,6 @@
 package slot;
 
-# ABSTRACT: A simple, comple-time way to declare a class
+# ABSTRACT: Simple, efficient, comple-time class declaration
 
 use v5.10;
 use strict;
