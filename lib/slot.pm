@@ -7,11 +7,13 @@ use warnings;
 no strict 'refs';
 use Carp;
 
-my $XS;
+our $XS;
 
 BEGIN {
-  eval 'use Class::XSAccessor';
-  $XS = $@ ? 0 : 1;
+  unless (defined $XS) {
+    eval 'use Class::XSAccessor';
+    $XS = $@ ? 0 : 1;
+  }
 }
 
 my %CLASS;
@@ -109,33 +111,25 @@ sub _build_ctor {
   my $code = qq{
 sub new \{
   my \$class = shift;
-  my \$param = \@_ == 1 ? \$_[0] : {\@_};
-  my \$self  = scalar(\@${class}::ISA) 
-    ? \$class->SUPER::new(\$param)
-    : bless {}, \$class;
+  my \$self  = scalar(\@${class}::ISA)
+    ? \$class->SUPER::new(\@_)
+    : bless {\@_}, \$class;
 };
 
   foreach my $name (@{ $CLASS{$class}{slots} }) {
     my $slot = $CLASS{$class}{slot}{$name};
 
     if ($slot->{req} && !defined $slot->{def}) {
-      $code .= "  croak '$name is a required field' unless exists \$param->{$name};\n";
+      $code .= "  croak '$name is a required field' unless exists \$self->{$name};\n";
     }
 
     if ($slot->{type}) {
-      my $check = $slot->{type}->inline_check("\$param->{$name}");
-
-      $code .= qq{
-  if (exists \$param->{$name}) \{
-    $check
-      || croak '$name did not pass validation as a $slot->{type}';
-  \}
-
-};
+      my $check = $slot->{type}->inline_check("\$self->{$name}");
+      $code .= "  croak '$name did not pass validation as a $slot->{type}' unless !exists \$self->{$name} || $check;\n";
     }
 
     if (defined $slot->{def}) {
-      $code .= "  \$self->{$name} = exists \$param->{$name} ? \$param->{$name} : ";
+      $code .= "  \$self->{$name} = ";
 
       if (ref $slot->{def} eq 'CODE') {
         $code .= "\$CLASS{$class}{slot}{$name}{def}->(\$self)";
@@ -143,11 +137,9 @@ sub new \{
       else {
         $code .= "\$CLASS{$class}{slot}{$name}{def}";
       }
-    } else {
-      $code .= "  \$self->{$name} = \$param->{$name}";
-    }
 
-    $code .= ";\n";
+      $code .= " unless exists \$self->{$name};\n";
+    }
   }
 
   $code .= qq{
@@ -170,9 +162,7 @@ sub _build_getter {
 
 sub _build_setter {
   my ($class, $name) = @_;
-  my $slot = $CLASS{$class}{slot}{$name};
-
-  if ($XS && !$slot->{type}) {
+  if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
     return _build_setter_xs($class, $name);
   } else {
     return _build_setter_pp($class, $name);
