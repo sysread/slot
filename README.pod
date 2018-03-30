@@ -36,8 +36,8 @@ C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
 dependencies outside of the Perl core distribution. Currently, only the unit
 tests require non-core packages.
 
-C<slot> is intended or use with Perl's bare metal objects. It provides a simple
-mechanism for building accessor and constructor code at compile time.
+C<slot> is intended for use with Perl's bare metal objects. It provides a
+simple mechanism for building accessor and constructor code at compile time.
 
 It does I<not> provide inheritance; that is done by setting C<@ISA> or via
 the C<base> or C<parent> pragmas.

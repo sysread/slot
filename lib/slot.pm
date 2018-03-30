@@ -45,13 +45,10 @@ sub import {
       slot  => {},
       slots => [],
       ctor  => undef,
-    };
-
-    *{ $caller . '::new' } = sub {
-      my ($class, @args) = @_;
-      my $ctor = _build_ctor($caller);
-      my $acc  = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
-      my $pkg  = qq{
+      init  => sub{
+        my $ctor = _build_ctor($caller);
+        my $acc  = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
+        my $pkg  = qq{
 package $caller;
 BEGIN {
 use Carp;
@@ -59,22 +56,28 @@ no warnings 'redefine';
 $ctor
 $acc
 };
-      };
+        };
 
-      if ($DEBUG) {
-        print "\n";
-        print "================================================================================\n";
-        print "# slot generated the following code:\n";
-        print "================================================================================\n";
-        print "$pkg\n";
-        print "================================================================================\n";
-        print "# end of slot-generated code\n";
-        print "================================================================================\n";
-        print "\n";
-      }
+        if ($DEBUG) {
+          print "\n";
+          print "================================================================================\n";
+          print "# slot generated the following code:\n";
+          print "================================================================================\n";
+          print "$pkg\n";
+          print "================================================================================\n";
+          print "# end of slot-generated code\n";
+          print "================================================================================\n";
+          print "\n";
+        }
 
-      eval $pkg;
-      $@ && die $@;
+        eval $pkg;
+        $@ && die $@;
+      },
+    };
+
+    *{ $caller . '::new' } = sub {
+      my ($class, @args) = @_;
+      $CLASS{$caller}{init}->();
       $class->new(@args);
     };
   }
@@ -96,31 +99,14 @@ $acc
 sub _build_ctor {
   my $class = shift;
 
-  my $code = q{
+  my $code = qq{
 sub new \{
-  my $class = shift;
-  my $param = @_ == 1 ? $_[0] : {@_};
-  my $self  = bless {}, $class;
-  $self->init($param);
-  $self;
-\};
-
+  my \$class = shift;
+  my \$param = \@_ == 1 ? \$_[0] : {\@_};
+  my \$self = \@${class}::ISA
+    ? \$class->SUPER::new(\$param)
+    : bless {}, \$class;
 };
-
-  $code .= _build_init($class);
-  return $code;
-}
-
-sub _build_init {
-  my $class = shift;
-  my $code  = q{
-sub init \{
-  my ($self, $param) = @_;
-};
-
-  if (@{$class . '::ISA'} && $class->SUPER::can('init')) {
-    $code .= "  \$self->SUPER::init(\$param);\n";
-  }
 
   foreach my $name (@{ $CLASS{$class}{slots} }) {
     my $slot = $CLASS{$class}{slot}{$name};
@@ -134,8 +120,10 @@ sub init \{
 
       $code .= qq{
   if (exists \$param->{$name}) {
-    $check || croak '$name did not pass validation as a $slot->{type}';
+    $check
+      || croak '$name did not pass validation as a $slot->{type}';
   }
+
 };
     }
 
@@ -153,7 +141,11 @@ sub init \{
     $code .= ";\n";
   }
 
-  $code .= "}\n";
+  $code .= qq{
+  return \$self;
+\};
+
+};
 
   return $code;
 }
@@ -181,7 +173,10 @@ sub $name \{
 
   if ($slot->{type}) {
     my $check = $slot->{type}->inline_check('$_[1]');
-    $code .= "    $check || croak 'value did not pass validation as a $slot->{type}';\n";
+    $code .= qq{
+    $check
+      || croak 'value did not pass validation as a $slot->{type}';
+};
   }
 
   $code .= qq{
@@ -221,8 +216,8 @@ C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
 dependencies outside of the Perl core distribution. Currently, only the unit
 tests require non-core packages.
 
-C<slot> is intended or use with Perl's bare metal objects. It provides a simple
-mechanism for building accessor and constructor code at compile time.
+C<slot> is intended for use with Perl's bare metal objects. It provides a
+simple mechanism for building accessor and constructor code at compile time.
 
 It does I<not> provide inheritance; that is done by setting C<@ISA> or via
 the C<base> or C<parent> pragmas.
