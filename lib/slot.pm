@@ -207,33 +207,71 @@ sub $name \{
 =head1 DESCRIPTION
 
 Similar to the L<fields> pragma, C<slot> declares individual fields in a class,
-additionally building a constructor and slot accessor methods. Inheritence is
-handled in the traditional way, with C<@ISA> or via C<base> or C<parent>
-pragmas.
+building a constructor and slot accessor methods.
 
-=head2 SLOTS
+Although not nearly as full-featured as L<Moose|other> L<Moo|solutions>,
+C<slot> is very light-weight, fast, and imposes very little in the way of
+dependencies Currently, only the unit tests require non-core packages.
 
-The import itself accepts two positional parameters: the slot name and an
-optional type. The type is validated during construction and in the setter, if
-the slot is read-write.
+C<slot> is intended or use with Perl's bare metal objects. It provides a simple
+mechanism for building accessor and constructor code at compile time.
+
+It does I<not> provide inheritance; that is done by setting C<@ISA> or via
+the C<base> or C<parent> pragmas.
+
+It does I<not> provide method wrappers; that is done with the C<SUPER>
+pseudo-class.
+
+It I<does> build a constructor method, C<new>, with support for default and
+required slots as keyword arguments and type validation of caller-supplied
+values.
+
+It I<does> build accesor methods (reader or combined reader/writer, using the
+slot's name) for each slot declared, with support for type validation.
+
+=head2 CONSTRUCTOR
+
+C<slot> generates a constructor method named C<new>. If there is already an
+existing method with that name, it may be overwritten, depending on the order
+in which C<slot> was imported.
+
+Because slots are declared individually, the constructor as well as the
+accessor methods are generated on the first call to C<new>.
+
+=head2 DECLARING SLOTS
+
+The pragma itself accepts two positional parameters: the slot name and optional
+type. The type is validated during construction and in the setter, if the slot
+is read-write.
+
+Slot names must be valid perl identifiers suitable for subroutine names. Types
+must be an instance of a class that supports the
+C<inline_check|Type::Tiny/Inlining methods> method.
 
 =head1 OPTIONS
 
 =head2 rw
 
 When true, the accessor method accepts a single parameter to modify the slot
-value
+value. If the slot declares a type, the accessor will croak if the new value
+does not validate.
 
 =head2 req
 
 When true, this constructor will croak if the slot is missing from the named
-parameters passed to the constructor.
+parameters passed to the constructor. If the slot also declares a
+L<default value|/def>, this attribute is moot.
 
 =head2 def
 
-When present, this value or code ref which generates a value is used as the
+When present, this value or code ref which returns a value is used as the
 default if the slot is missing from the named parameters passed to the
 constructor.
+
+=head1 DEBUGGING
+
+Adding C<use slot -debug> to your class will cause C<slot> to print the
+generated constructor and accessor code when C<new> is first called.
 
 =cut
 
