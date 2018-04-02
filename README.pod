@@ -138,17 +138,13 @@ Class::XSAccessor to L<Moo> and L<slot>.
   | moose 719424/s  102%    --  -25%
   | slot  961538/s  170%   34%    --
 
-Strangely enough, using the same test but without L<Class::XSAccessor>
-installed, L<Moo> seemed to perform better.
+Oddly, L<Moo> seemed to perform better running the same test without
+L<Class::XSAccessor> installed.
 
   |           Rate   moo moose  slot
   | moo   377358/s    --  -50%  -56%
   | moose 757576/s  101%    --  -12%
   | slot  862069/s  128%   14%    --
-
-=head1 TODO
-
-  1. Use type->check when type->inline_check is not available
 
 =head1 AUTHOR
 

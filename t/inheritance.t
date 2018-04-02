@@ -15,7 +15,7 @@ use Types::Standard -types;
 use parent -norequire, 'P1';
 use slot x => StrMatch[qr/[13579]$/], rw => 0, req => 1;
 use slot y => StrMatch[qr/[13579]$/], rw => 1;
-use slot z => sub{1} & StrMatch[qr/[13579]$/], rw => 1;
+use slot z => sub{1} & StrMatch[qr/[13579]$/], rw => 1; # ensure non-inlined types work
 1;
 
 
