@@ -152,34 +152,35 @@ sub new \{
     my $req   = $slot->{req};
     my $def   = $slot->{def};
     my $type  = $TYPE{$slot->{type}} if exists $slot->{type};
+    my $ident = quote_identifier($name);
 
     if ($req && !defined $def) {
-      $code .= "  croak '$name is a required field' unless exists \$self->{$name};\n";
+      $code .= "  croak '$ident is a required field' unless exists \$self->{'$ident'};\n";
     }
 
     if ($type) {
       my $check = $type->can_be_inlined
-        ? $type->inline_check("\$self->{$name}")
-        : "\$slot::TYPE{'$type'}->check(\$self->{$name})";
+        ? $type->inline_check("\$self->{'$ident'}")
+        : "\$slot::TYPE{'$type'}->check(\$self->{'$ident'})";
 
       $code .= qq{
-  croak '${class}::$name did not pass validation as a $type'
-    unless !exists \$self->{$name}
+  croak '${class}::$ident did not pass validation as a $type'
+    unless !exists \$self->{'$ident'}
         || $check;
 };
     }
 
     if (defined $def) {
-      $code .= "  \$self->{$name} = ";
+      $code .= "  \$self->{'$ident'} = ";
 
       if (ref $def eq 'CODE') {
-        $code .= "\$CLASS{$class}{slot}{$name}{def}->(\$self)";
+        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}->(\$self)";
       }
       else {
-        $code .= "\$CLASS{$class}{slot}{$name}{def}";
+        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}";
       }
 
-      $code .= " unless exists \$self->{$name};\n";
+      $code .= " unless exists \$self->{'$ident'};\n";
     }
   }
 
@@ -235,12 +236,13 @@ sub _build_getter {
 
 sub _build_getter_pp {
   my ($class, $name) = @_;
+  my $ident = quote_identifier($name);
   return qq{
 sub $name \{
-  croak "${class}::$name is protected"
+  croak "${class}::$ident is protected"
     if \@_ > 1;
 
-  return \$_[0]->{$name}
+  return \$_[0]->{'$ident'}
     if defined wantarray;
 \}
 };
@@ -250,8 +252,9 @@ sub _build_setter_pp {
   my ($class, $name) = @_;
   my $slot  = $class->get_slots->{$name};
   my $type  = $TYPE{$slot->{type}} if $slot->{type};
+  my $ident = quote_identifier($name);
 
-  my $code = "sub $name {\n  if (\@_ > 1) {\n";
+  my $code = "sub $ident {\n  if (\@_ > 1) {\n";
 
   if ($type) {
     my $check = $type->can_be_inlined
@@ -259,16 +262,16 @@ sub _build_setter_pp {
       : "\$slot::TYPE{'$type'}->check(\$_[1])";
 
       $code .= qq{
-    croak '${class}::$name did not pass validation as a $type'
+    croak '${class}::$ident did not pass validation as a $type'
       unless $check;
 };
   }
 
   $code .= qq{
-    \$_[0]->{$name} = \$_[1];
+    \$_[0]->{'$ident'} = \$_[1];
   \}
 
-  return \$_[0]->{$name}
+  return \$_[0]->{'$ident'}
     if defined wantarray;
 \}
 };
@@ -288,13 +291,27 @@ sub _build_setter {
 
 sub _build_getter_xs {
   my ($class, $name) = @_;
-  return "use Class::XSAccessor getters => {'$name' => '$name'}, replace => 1, class => '$class';\n";
+  my $ident = quote_identifier($name);
+  return "use Class::XSAccessor getters => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
 }
 
 sub _build_setter_xs {
   my ($class, $name) = @_;
-  return "use Class::XSAccessor accessors => {'$name' => '$name'}, replace => 1, class => '$class';\n";
+  my $ident = quote_identifier($name);
+  return "use Class::XSAccessor accessors => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
 }
+
+#-------------------------------------------------------------------------------
+# Helpers
+#-------------------------------------------------------------------------------
+sub quote_identifier {
+  my $ident = shift;
+  $ident =~ s/-/_/g;
+  $ident =~ s/([^a-zA-Z0-9_])/\\$1/g;
+  return $ident;
+}
+
+1;
 
 =head1 SYNOPSIS
 
@@ -437,5 +454,3 @@ installed, L<Moo> seemed to perform better.
   1. Use type->check when type->inline_check is not available
 
 =cut
-
-1;
