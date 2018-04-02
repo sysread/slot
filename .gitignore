@@ -1,4 +1,3 @@
 .build
 slot-*
-scratch.pl
-bench.pl
+scratch*

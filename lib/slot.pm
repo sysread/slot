@@ -171,7 +171,7 @@ sub _build_setter {
 
 sub _build_getter_pp {
   my ($class, $name) = @_;
-  return "sub $name { \$_[0]->{$name} }\n";
+  return "sub $name { return \$_[0]->{$name} if defined wantarray; return; }\n";
 }
 
 sub _build_setter_pp {
@@ -191,7 +191,7 @@ sub $name \{
     $code .= ";\n";
   }
 
-  $code .= "  \$_[0]->{$name}\n}\n";
+  $code .= "  return \$_[0]->{$name} if defined wantarray;\n  return;\n}\n";
 
   return $code;
 }
