@@ -53,15 +53,17 @@ sub import {
       slots => [],
       ctor  => undef,
       init  => sub{
-        my $ctor = _build_ctor($caller);
-        my $acc  = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
-        my $pkg  = qq{
+        my $ctor  = _build_ctor($caller);
+        my $acc   = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
+        my $check = join "\n", map{ $CLASS{$caller}{slot}{$_}{check} } @{ $CLASS{$caller}{slots} };
+        my $pkg   = qq{
 package $caller;
 use Carp;
 no warnings 'redefine';
 BEGIN {
 $ctor
 $acc
+$check
 }
         };
 
@@ -102,6 +104,8 @@ $acc
     = $rw ? _build_setter($caller, $name)
           : _build_getter($caller, $name);
 
+  $CLASS{$caller}{slot}{$name}{check} = _build_check($caller, $name);
+
   push @{ $CLASS{$caller}{slots} }, $name;
 }
 
@@ -124,8 +128,11 @@ sub new \{
     }
 
     if ($slot->{type}) {
-      my $check = $slot->{type}->inline_check("\$self->{$name}");
-      $code .= "  croak '$name did not pass validation as a $slot->{type}' unless !exists \$self->{$name} || $check;\n";
+      $code .= qq{
+  croak '${class}::$name did not pass validation as a $slot->{type}'
+    unless !exists \$self->{$name}
+        || \$self->check_${name}(\$self->{$name});
+};
     }
 
     if (defined $slot->{def}) {
@@ -149,6 +156,19 @@ sub new \{
 };
 
   return $code;
+}
+
+sub _build_check {
+  my ($class, $name) = @_;
+  my $slot = $CLASS{$class}{slot}{$name};
+
+  if ($slot->{type}) {
+    my $check = $slot->{type}->inline_check('$_[1]');
+    return "sub check_$name (\\\$) { $check }\n";
+  }
+  else {
+    return "sub check_$name (\\\$) { 1 }\n";
+  }
 }
 
 sub _build_getter {
@@ -177,23 +197,21 @@ sub _build_getter_pp {
 sub _build_setter_pp {
   my ($class, $name) = @_;
   my $slot = $CLASS{$class}{slot}{$name};
-
-  my $code = qq{
+  return qq{
 sub $name \{
-  \$_[0]->{$name} = \$_[1]
-    if \@_ > 1
-};
+  if (\@_ > 1) {
+    croak '${class}::$name did not pass validation as a $slot->{type}'
+      unless \$_[0]->check_$name(\$_[1]);
 
-  if ($slot->{type}) {
-    my $check = $slot->{type}->inline_check('$_[1]');
-    $code .= "    && ($check || croak '$name expected value of type $slot->{type}');\n";
-  } else {
-    $code .= ";\n";
+    \$_[0]->{$name} = \$_[1];
   }
 
-  $code .= "  return \$_[0]->{$name} if defined wantarray;\n  return;\n}\n";
+  return \$_[0]->{$name}
+    if defined wantarray;
 
-  return $code;
+  return;
+\}
+};
 }
 
 sub _build_getter_xs {
