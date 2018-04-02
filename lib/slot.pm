@@ -234,11 +234,17 @@ sub _build_getter {
   }
 }
 
+sub _build_getter_xs {
+  my ($class, $name) = @_;
+  my $ident = quote_identifier($name);
+  return "use Class::XSAccessor getters => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
+}
+
 sub _build_getter_pp {
   my ($class, $name) = @_;
   my $ident = quote_identifier($name);
   return qq{
-sub $name \{
+sub $ident \{
   croak "${class}::$ident is protected"
     if \@_ > 1;
 
@@ -246,6 +252,24 @@ sub $name \{
     if defined wantarray;
 \}
 };
+}
+
+#-------------------------------------------------------------------------------
+# Read-write accessor
+#-------------------------------------------------------------------------------
+sub _build_setter {
+  my ($class, $name) = @_;
+  if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
+    return _build_setter_xs($class, $name);
+  } else {
+    return _build_setter_pp($class, $name);
+  }
+}
+
+sub _build_setter_xs {
+  my ($class, $name) = @_;
+  my $ident = quote_identifier($name);
+  return "use Class::XSAccessor accessors => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
 }
 
 sub _build_setter_pp {
@@ -278,36 +302,11 @@ sub _build_setter_pp {
 }
 
 #-------------------------------------------------------------------------------
-# Read-write accessor
-#-------------------------------------------------------------------------------
-sub _build_setter {
-  my ($class, $name) = @_;
-  if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
-    return _build_setter_xs($class, $name);
-  } else {
-    return _build_setter_pp($class, $name);
-  }
-}
-
-sub _build_getter_xs {
-  my ($class, $name) = @_;
-  my $ident = quote_identifier($name);
-  return "use Class::XSAccessor getters => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
-}
-
-sub _build_setter_xs {
-  my ($class, $name) = @_;
-  my $ident = quote_identifier($name);
-  return "use Class::XSAccessor accessors => {'$ident' => '$ident'}, replace => 1, class => '$class';\n";
-}
-
-#-------------------------------------------------------------------------------
 # Helpers
 #-------------------------------------------------------------------------------
 sub quote_identifier {
   my $ident = shift;
-  $ident =~ s/-/_/g;
-  $ident =~ s/([^a-zA-Z0-9_])/\\$1/g;
+  $ident =~ s/([^a-zA-Z0-9_]+)/_/g;
   return $ident;
 }
 

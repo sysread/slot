@@ -3,6 +3,7 @@ use Types::Standard -types;
 use slot foo => Int, rw => 1, def => 42;
 use slot bar => Str, req => 1;
 use slot baz => req => 1, def => 'fnord';
+use slot 'foo $bar';
 1;
 
 
@@ -12,6 +13,9 @@ use strict;
 use warnings;
 use Test::More;
 
+is slot::quote_identifier('a-b^c'), 'a_b_c', 'quote identifier: individual chars';
+is slot::quote_identifier('a----b'), 'a_b', 'quote identifier: multiple chars';
+
 # Constructor
 ok my $o = A->new(foo => 1, bar => 'slack', baz => 'bat'), 'ctor';
 
@@ -19,6 +23,7 @@ ok my $o = A->new(foo => 1, bar => 'slack', baz => 'bat'), 'ctor';
 is $o->foo, 1, 'get slot';
 is $o->bar, 'slack', 'get slot';
 is $o->baz, 'bat', 'get slot';
+ok $o->can('foo_bar'), 'quoted slot accessor';
 
 # Setters
 is $o->foo(4), 4, 'set slot';
