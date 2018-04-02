@@ -130,13 +130,21 @@ slots that are not writable or are writable but have no declared type.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<slot>. The test includes multiple setters using a mix of
-inherited, typed and untyped, attributes. Both L<Moo> and L<slot> have access
-to the installed L<Class::XSAccessor> C<v1.19>.
+inherited, typed and untyped, attributes, which ammortizes the benefit of
+Class::XSAccessor to L<Moo> and L<slot>.
 
-            Rate   moo moose  slot
-  moo   355872/s    --  -51%  -63%
-  moose 719424/s  102%    --  -25%
-  slot  961538/s  170%   34%    --
+  |           Rate   moo moose  slot
+  | moo   355872/s    --  -51%  -63%
+  | moose 719424/s  102%    --  -25%
+  | slot  961538/s  170%   34%    --
+
+Strangely enough, using the same test but without L<Class::XSAccessor>
+installed, L<Moo> seemed to perform better.
+
+  |           Rate   moo moose  slot
+  | moo   377358/s    --  -50%  -56%
+  | moose 757576/s  101%    --  -12%
+  | slot  862069/s  128%   14%    --
 
 =head1 TODO
 
