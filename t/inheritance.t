@@ -20,9 +20,9 @@ use slot z => StrMatch[qr/[13579]$/], rw => 1;
 
 
 package main;
-
-use Test2::V0;
-use Test2;
+use strict;
+use warnings;
+use Test::More;
 
 ok my $p2 = P2->new(x => 10, y => 20, z => 30), 'ctor';
 is $p2->x, 10, 'get slot: x';
@@ -30,13 +30,13 @@ is $p2->y, 20, 'get slot: y';
 is $p2->z, 30, 'get slot: z';
 ok $p2->isa('P2'), 'isa P2';
 ok $p2->isa('P1'), 'isa P1';
-ok dies{ P2->new(x => 10, y => 20, z => 'foo') }, 'ctor: dies on invalid slot type';
-ok dies{ P2->new(x => 'foo', y => 20, z => 30) }, 'ctor: dies on invalid parent slot type';
+ok do{ eval{ P2->new(x => 10, y => 20, z => 'foo') }; $@ }, 'ctor: dies on invalid slot type';
+ok do{ eval{ P2->new(x => 'foo', y => 20, z => 30) }; $@ }, 'ctor: dies on invalid parent slot type';
 
-ok(dies{ P3->new(x => 10, y => 20, z => 30) }, 'ctor: dies on stricter child type');
+ok(do{ eval{ P3->new(x => 10, y => 20, z => 30) }; $@ }, 'ctor: dies on stricter child type');
 
 ok(P3->new(x => 'a7', y => '39', z => '0x35'), 'ctor: ok on less strict child type');
-ok(dies{ P3->new(y => '39', z => '0x35') }, 'ctor: dies on stricter child req');
-ok(dies{ P3->new(x => 'a7', y => '39', z => '0x35')->x(45) }, 'setter: dies on stricter child rw');
+ok(do{ eval{ P3->new(y => '39', z => '0x35') }; $@ }, 'ctor: dies on stricter child req');
+ok(do{ eval{ P3->new(x => 'a7', y => '39', z => '0x35')->x(45) }; $@ }, 'setter: dies on stricter child rw');
 
 done_testing;

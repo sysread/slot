@@ -8,8 +8,9 @@ use slot baz => req => 1, def => 'fnord';
 
 package main;
 
-use Test2::V0;
-use Test2;
+use strict;
+use warnings;
+use Test::More;
 
 # Constructor
 ok my $o = A->new(foo => 1, bar => 'slack', baz => 'bat'), 'ctor';
@@ -24,8 +25,8 @@ is $o->foo(4), 4, 'set slot';
 is $o->foo, 4, 'slot remains set';
 
 # Validation
-ok dies{ A->new(foo => 1, baz => 2) }, 'ctor dies w/o req arg';
-ok dies{ A->new(bar => 'bar', foo => 'not an int') }, 'ctor dies on invalid type';
+ok do{ eval{ A->new(foo => 1, baz => 2) }; $@ }, 'ctor dies w/o req arg';
+ok do{ eval{ A->new(bar => 'bar', foo => 'not an int') }; $@ }, 'ctor dies on invalid type';
 
 ok $o = A->new(bar => 'asdf'), 'ctor w/o def args';
 is $o->foo, 42, 'get slot w/ def';
