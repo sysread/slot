@@ -17,9 +17,9 @@ BEGIN {
   }
 }
 
-my %CLASS;
-my %TYPE;
-my $DEBUG;
+our %CLASS;
+our %TYPE;
+our $DEBUG;
 
 sub import {
   my $caller = caller;
@@ -41,6 +41,7 @@ sub import {
   croak "slot ${name}'s type is invalid"
     if defined $type
     && !ref $type
+    && !$type->can('can_be_inlined')
     && !$type->can('inline_check')
     && !$type->can('check');
 
@@ -151,13 +152,16 @@ sub new \{
     my $req   = $slot->{req};
     my $def   = $slot->{def};
     my $type  = $TYPE{$slot->{type}} if exists $slot->{type};
-    my $check = $type->inline_check("\$self->{$name}") if defined $type;
 
     if ($req && !defined $def) {
       $code .= "  croak '$name is a required field' unless exists \$self->{$name};\n";
     }
 
-    if ($check) {
+    if ($type) {
+      my $check = $type->can_be_inlined
+        ? $type->inline_check("\$self->{$name}")
+        : "\$slot::TYPE{'$type'}->check(\$self->{$name})";
+
       $code .= qq{
   croak '${class}::$name did not pass validation as a $type'
     unless !exists \$self->{$name}
@@ -246,12 +250,15 @@ sub _build_setter_pp {
   my ($class, $name) = @_;
   my $slot  = $class->get_slots->{$name};
   my $type  = $TYPE{$slot->{type}} if $slot->{type};
-  my $check = $type->inline_check('$_[1]') if defined $type;
 
   my $code = "sub $name {\n  if (\@_ > 1) {\n";
 
-  if ($check) {
-    $code .= qq{
+  if ($type) {
+    my $check = $type->can_be_inlined
+      ? $type->inline_check('$_[1]')
+      : "\$slot::TYPE{'$type'}->check(\$_[1])";
+
+      $code .= qq{
     croak '${class}::$name did not pass validation as a $type'
       unless $check;
 };
