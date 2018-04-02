@@ -24,15 +24,6 @@ is $o->foo(4), 4, 'set slot';
 is $o->foo, 4, 'slot remains set';
 
 # Validation
-ok(A->check_foo(40), 'check_foo: positive input');
-ok(!A->check_foo('foo'), 'check_foo: negative input');
-
-ok(A->check_bar('bar'), 'check_bar: positive input');
-ok(!A->check_bar([]), 'check_bar: negative input');
-
-ok(A->check_baz('baz'), 'check_baz: positive input');
-ok(A->check_baz([]), 'check_baz: negative input');
-
 ok dies{ A->new(foo => 1, baz => 2) }, 'ctor dies w/o req arg';
 ok dies{ A->new(bar => 'bar', foo => 'not an int') }, 'ctor dies on invalid type';
 

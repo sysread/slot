@@ -95,6 +95,28 @@ If the default is a code ref which generates a value and a type is specified,
 note that the code ref will be called during compilation to validate its type
 rather than re-validating it with every accessor call.
 
+=head1 INHERITANCE
+
+When a class declares a slot which is also declared in the parent class, the
+parent class' settings are overridden. Any options I<not> included in the
+overriding class' slot declaration remain in effect in the child class.
+
+  package A;
+
+  use slot 'foo', rw => 1;
+  use slot 'bar', req => 1, rw => 1;
+
+  1;
+
+  package B;
+
+  use parent -norequire, 'A';
+
+  use slot 'foo', req => 1; # B->foo is req, inherits rw
+  use slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
+
+  1;
+
 =head1 DEBUGGING
 
 Adding C<use slot -debug> to your class will cause C<slot> to print the

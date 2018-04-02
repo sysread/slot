@@ -5,6 +5,7 @@ package slot;
 use strict;
 use warnings;
 no strict 'refs';
+no warnings 'redefine';
 use Carp;
 
 our $XS;
@@ -33,14 +34,14 @@ sub import {
     ? (undef, @_)
     : @_;
 
+  my $rw  = $param{rw};
+  my $req = $param{req};
+
   croak "slot ${name}'s type is invalid"
     if defined $type
     && !ref $type
     && !$type->can('inline_check')
     && !$type->can('check');
-
-  my $rw  = $param{rw};
-  my $req = $param{req};
 
   if (exists $param{def} && $type) {
     croak "default value for $name is not a valid $type"
@@ -53,17 +54,30 @@ sub import {
       slots => [],
       ctor  => undef,
       init  => sub{
-        my $ctor  = _build_ctor($caller);
-        my $acc   = join "\n", map{ $CLASS{$caller}{slot}{$_}{acc} } @{ $CLASS{$caller}{slots} };
-        my $check = join "\n", map{ $CLASS{$caller}{slot}{$_}{check} } @{ $CLASS{$caller}{slots} };
-        my $pkg   = qq{
+        # Ensure any accessor methods defined by $caller's parent class(es)
+        # have been built.
+        foreach (@{ $caller . '::ISA' }) {
+          if (exists $CLASS{$_} && defined $CLASS{$_}{init}) {
+            $CLASS{$_}{init}->();
+          }
+        }
+
+        # Build constructor and accessor methods
+        my $ctor = _build_ctor($caller);
+
+        my $acc = join "\n", map{
+            $rw ? _build_setter($caller, $_)
+                : _build_getter($caller, $_)
+          }
+          @{ $CLASS{$caller}{slots} };
+
+        my $pkg  = qq{
 package $caller;
 use Carp;
 no warnings 'redefine';
 BEGIN {
 $ctor
 $acc
-$check
 }
         };
 
@@ -79,66 +93,72 @@ $check
           print "\n";
         }
 
+        # Install constructor and accessor methods
         eval $pkg;
         $@ && die $@;
       },
     };
 
+    # Temporary definition of new that includes code to initialize the class as
+    # configured for slots.
     *{ $caller . '::new' } = sub {
-      my ($class, @args) = @_;
-      $CLASS{$caller}{init}->();
-      $class->new(@args);
+      $CLASS{$_[0]}{init}->();
+      goto $_[0]->can('new');
     };
   }
 
-  $CLASS{$caller}{slot}{$name} = {
-    type => $type,
-    rw   => $rw,
-    req  => $req,
-  };
+  $CLASS{$caller}{slot}{$name} = {};
+  $CLASS{$caller}{slot}{$name}{type} = $type
+    if defined $type;
 
-  $CLASS{$caller}{slot}{$name}{def} = $param{def}
-    if exists $param{def};
+  foreach (qw(def req rw)) {
+    $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
+      if exists $param{$_};
+  }
 
-  $CLASS{$caller}{slot}{$name}{acc}
-    = $rw ? _build_setter($caller, $name)
-          : _build_getter($caller, $name);
-
-  $CLASS{$caller}{slot}{$name}{check} = _build_check($caller, $name);
+  *{ $caller . '::get_slots' } = \&get_slots;
 
   push @{ $CLASS{$caller}{slots} }, $name;
 }
 
+#-------------------------------------------------------------------------------
+# Constructor
+#-------------------------------------------------------------------------------
 sub _build_ctor {
   my $class = shift;
 
   my $code = qq{
 sub new \{
   my \$class = shift;
-  my \$self  = scalar(\@${class}::ISA)
-    ? \$class->SUPER::new(\@_)
-    : bless {\@_}, \$class;
+  my \$self  = bless { \@_ }, \$class;
 };
 
-  foreach my $name (@{ $CLASS{$class}{slots} }) {
-    my $slot = $CLASS{$class}{slot}{$name};
+  my $slots = $class->get_slots;
 
-    if ($slot->{req} && !defined $slot->{def}) {
+  foreach my $name (keys %$slots) {
+    my $slot  = $slots->{$name};
+    my $req   = $slot->{req};
+    my $def   = $slot->{def};
+    my $type  = $slot->{type};
+    my $check = $type->inline_check("\$self->{$name}")
+      if defined $type;
+
+    if ($req && !defined $def) {
       $code .= "  croak '$name is a required field' unless exists \$self->{$name};\n";
     }
 
-    if ($slot->{type}) {
+    if ($check) {
       $code .= qq{
-  croak '${class}::$name did not pass validation as a $slot->{type}'
+  croak '${class}::$name did not pass validation as a $type'
     unless !exists \$self->{$name}
-        || \$self->check_${name}(\$self->{$name});
+        || $check;
 };
     }
 
-    if (defined $slot->{def}) {
+    if (defined $def) {
       $code .= "  \$self->{$name} = ";
 
-      if (ref $slot->{def} eq 'CODE') {
+      if (ref $def eq 'CODE') {
         $code .= "\$CLASS{$class}{slot}{$name}{def}->(\$self)";
       }
       else {
@@ -158,19 +178,33 @@ sub new \{
   return $code;
 }
 
-sub _build_check {
-  my ($class, $name) = @_;
-  my $slot = $CLASS{$class}{slot}{$name};
+#-------------------------------------------------------------------------------
+# Settings
+#-------------------------------------------------------------------------------
+sub get_slots {
+  my ($class) = @_;
+  my %slots;
 
-  if ($slot->{type}) {
-    my $check = $slot->{type}->inline_check('$_[1]');
-    return "sub check_$name (\\\$) { $check }\n";
+  foreach ($class, @{ $class . '::ISA' }) {
+    foreach my $slot (@{$CLASS{$_}{slots}}) {
+      if (!exists $slots{$slot}) {
+        $slots{$slot} = $CLASS{$_}{slot}{$slot};
+      }
+      else {
+        foreach my $cfg (qw(rw req def type)) {
+          $slots{$slot}{$cfg} = $CLASS{$_}{slot}{$slot}
+            unless exists $CLASS{$_}{slot}{$slot};
+        }
+      }
+    }
   }
-  else {
-    return "sub check_$name (\\\$) { 1 }\n";
-  }
+
+  return \%slots;
 }
 
+#-------------------------------------------------------------------------------
+# Read-only accessor
+#-------------------------------------------------------------------------------
 sub _build_getter {
   my ($class, $name) = @_;
   if ($XS) {
@@ -180,6 +214,37 @@ sub _build_getter {
   }
 }
 
+sub _build_getter_pp {
+  my ($class, $name) = @_;
+  return "sub $name { return \$_[0]->{$name} if defined wantarray; }\n";
+}
+
+sub _build_setter_pp {
+  my ($class, $name) = @_;
+  my $slot  = $CLASS{$class}{slot}{$name};
+  my $type  = $class->get_slots->{$name}{type};
+  my $check = $type->inline_check('$_[1]')
+    if defined $type;
+
+  my $code = "sub $name {\n  if (\@_ > 1) {\n";
+
+  if ($check) {
+    $code .= "    croak '${class}::$name did not pass validation as a $type'\n      unless $check;\n";
+  }
+
+  $code .= qq{
+    \$_[0]->{$name} = \$_[1];
+  \}
+
+  return \$_[0]->{$name}
+    if defined wantarray;
+\}
+};
+}
+
+#-------------------------------------------------------------------------------
+# Read-write accessor
+#-------------------------------------------------------------------------------
 sub _build_setter {
   my ($class, $name) = @_;
   if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
@@ -187,31 +252,6 @@ sub _build_setter {
   } else {
     return _build_setter_pp($class, $name);
   }
-}
-
-sub _build_getter_pp {
-  my ($class, $name) = @_;
-  return "sub $name { return \$_[0]->{$name} if defined wantarray; return; }\n";
-}
-
-sub _build_setter_pp {
-  my ($class, $name) = @_;
-  my $slot = $CLASS{$class}{slot}{$name};
-  return qq{
-sub $name \{
-  if (\@_ > 1) {
-    croak '${class}::$name did not pass validation as a $slot->{type}'
-      unless \$_[0]->check_$name(\$_[1]);
-
-    \$_[0]->{$name} = \$_[1];
-  }
-
-  return \$_[0]->{$name}
-    if defined wantarray;
-
-  return;
-\}
-};
 }
 
 sub _build_getter_xs {
@@ -308,6 +348,28 @@ constructor.
 If the default is a code ref which generates a value and a type is specified,
 note that the code ref will be called during compilation to validate its type
 rather than re-validating it with every accessor call.
+
+=head1 INHERITANCE
+
+When a class declares a slot which is also declared in the parent class, the
+parent class' settings are overridden. Any options I<not> included in the
+overriding class' slot declaration remain in effect in the child class.
+
+  package A;
+
+  use slot 'foo', rw => 1;
+  use slot 'bar', req => 1, rw => 1;
+
+  1;
+
+  package B;
+
+  use parent -norequire, 'A';
+
+  use slot 'foo', req => 1; # B->foo is req, inherits rw
+  use slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
+
+  1;
 
 =head1 DEBUGGING
 
