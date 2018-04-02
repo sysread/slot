@@ -229,7 +229,10 @@ sub _build_setter_pp {
   my $code = "sub $name {\n  if (\@_ > 1) {\n";
 
   if ($check) {
-    $code .= "    croak '${class}::$name did not pass validation as a $type'\n      unless $check;\n";
+    $code .= qq{
+    croak '${class}::$name did not pass validation as a $type'
+      unless $check;
+};
   }
 
   $code .= qq{

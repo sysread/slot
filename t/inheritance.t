@@ -24,6 +24,8 @@ use strict;
 use warnings;
 use Test::More;
 
+use slot -debug;
+
 ok my $p2 = P2->new(x => 10, y => 20, z => 30), 'ctor';
 is $p2->x, 10, 'get slot: x';
 is $p2->y, 20, 'get slot: y';
