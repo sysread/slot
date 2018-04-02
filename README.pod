@@ -122,6 +122,26 @@ overriding class' slot declaration remain in effect in the child class.
 Adding C<use slot -debug> to your class will cause C<slot> to print the
 generated constructor and accessor code when C<new> is first called.
 
+=head1 PERFORMANCE
+
+C<slot> is designed to be fast and have a low overhead. When available,
+L<Class::XSAccessor> is used to generate the class accessors. This applies to
+slots that are not writable or are writable but have no declared type.
+
+A minimal benchmark on my admittedly underpowered system compares L<Moose>,
+L<Moo>, and L<slot>. The test includes multiple setters using a mix of
+inherited, typed and untyped, attributes. Both L<Moo> and L<slot> have access
+to the installed L<Class::XSAccessor> C<v1.19>.
+
+            Rate   moo moose  slot
+  moo   355872/s    --  -51%  -63%
+  moose 719424/s  102%    --  -25%
+  slot  961538/s  170%   34%    --
+
+=head1 TODO
+
+  1. Use type->check when type->inline_check is not available
+
 =head1 AUTHOR
 
 Jeff Ober <sysread@fastmail.fm>
