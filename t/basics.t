@@ -25,8 +25,8 @@ is $o->foo(4), 4, 'set slot';
 is $o->foo, 4, 'slot remains set';
 
 # Validation
-ok do{ eval{ A->new(foo => 1, baz => 2) }; $@ }, 'ctor dies w/o req arg';
-ok do{ eval{ A->new(bar => 'bar', foo => 'not an int') }; $@ }, 'ctor dies on invalid type';
+ok do{ local $@; eval{ A->new(foo => 1, baz => 2) }; $@ }, 'ctor dies w/o req arg';
+ok do{ local $@; eval{ A->new(bar => 'bar', foo => 'not an int') }; $@ }, 'ctor dies on invalid type';
 
 ok $o = A->new(bar => 'asdf'), 'ctor w/o def args';
 is $o->foo, 42, 'get slot w/ def';

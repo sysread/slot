@@ -30,13 +30,13 @@ is $p2->y, 20, 'get slot: y';
 is $p2->z, 30, 'get slot: z';
 ok $p2->isa('P2'), 'isa P2';
 ok $p2->isa('P1'), 'isa P1';
-ok do{ eval{ P2->new(x => 10, y => 20, z => 'foo') }; $@ }, 'ctor: dies on invalid slot type';
-ok do{ eval{ P2->new(x => 'foo', y => 20, z => 30) }; $@ }, 'ctor: dies on invalid parent slot type';
+ok do{ local $@; eval{ P2->new(x => 10, y => 20, z => 'foo') }; $@ }, 'ctor: dies on invalid slot type';
+ok do{ local $@; eval{ P2->new(x => 'foo', y => 20, z => 30) }; $@ }, 'ctor: dies on invalid parent slot type';
 
-ok(do{ eval{ P3->new(x => 10, y => 20, z => 30) }; $@ }, 'ctor: dies on stricter child type');
+ok(do{ local $@; eval{ P3->new(x => 10, y => 20, z => 30) }; $@ }, 'ctor: dies on stricter child type');
 
 ok(P3->new(x => 'a7', y => '39', z => '0x35'), 'ctor: ok on less strict child type');
-ok(do{ eval{ P3->new(y => '39', z => '0x35') }; $@ }, 'ctor: dies on stricter child req');
-ok(do{ eval{ P3->new(x => 'a7', y => '39', z => '0x35')->x(45) }; $@ }, 'setter: dies on stricter child rw');
+ok(do{ local $@; eval{ P3->new(y => '39', z => '0x35') }; $@ }, 'ctor: dies on stricter child req');
+ok(do{ local $@; eval{ P3->new(x => 'a7', y => '39', z => '0x35')->x(45) }; $@ }, 'setter: dies on stricter child rw');
 
 done_testing;
