@@ -66,11 +66,16 @@ sub import {
         # Build constructor and accessor methods
         my $ctor = _build_ctor($caller);
 
-        my $acc = join "\n", map{
-            $rw ? _build_setter($caller, $_)
-                : _build_getter($caller, $_)
+        my $acc = '';
+        foreach (@{ $CLASS{$caller}{slots} }) {
+          if ($CLASS{$caller}{slot}{$_}{rw}) {
+            $acc .= _build_setter($caller, $_);
+          } else {
+            $acc .= _build_getter($caller, $_);
           }
-          @{ $CLASS{$caller}{slots} };
+
+          $acc .= "\n";
+        }
 
         my $pkg  = qq{
 package $caller;
@@ -145,9 +150,8 @@ sub new \{
     my $slot  = $slots->{$name};
     my $req   = $slot->{req};
     my $def   = $slot->{def};
-    my $type  = $TYPE{$slot->{type}};
-    my $check = $type->inline_check("\$self->{$name}")
-      if defined $type;
+    my $type  = $TYPE{$slot->{type}} if exists $slot->{type};
+    my $check = $type->inline_check("\$self->{$name}") if defined $type;
 
     if ($req && !defined $def) {
       $code .= "  croak '$name is a required field' unless exists \$self->{$name};\n";
