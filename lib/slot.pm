@@ -231,7 +231,15 @@ sub _build_getter {
 
 sub _build_getter_pp {
   my ($class, $name) = @_;
-  return "sub $name { return \$_[0]->{$name} if defined wantarray; }\n";
+  return qq{
+sub $name \{
+  croak "${class}::$name is protected"
+    if \@_ > 1;
+
+  return \$_[0]->{$name}
+    if defined wantarray;
+\}
+};
 }
 
 sub _build_setter_pp {

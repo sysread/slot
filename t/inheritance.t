@@ -23,9 +23,6 @@ package main;
 use strict;
 use warnings;
 use Test::More;
-use Data::Dumper;
-
-use slot -debug;
 
 ok my $p2 = P2->new(x => 10, y => 20, z => 30), 'ctor';
 is $p2->x, 10, 'get slot: x';
@@ -41,7 +38,5 @@ ok(do{ local $@; eval{ P3->new(x => 10, y => 20, z => 30) }; $@ }, 'ctor: dies o
 ok(P3->new(x => 'a7', y => '39', z => '0x35'), 'ctor: ok on less strict child type');
 ok(do{ local $@; eval{ P3->new(y => '39', z => '0x35') }; $@ }, 'ctor: dies on stricter child req');
 ok(do{ my $p = P3->new(x => 'a7', y => '39', z => '0x35'); local $@; eval{ $p->x(45) }; $@ }, 'setter: dies on stricter child rw');
-
-diag( Dumper( P3->get_slots ) );
 
 done_testing;
