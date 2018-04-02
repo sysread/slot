@@ -18,6 +18,7 @@ BEGIN {
 }
 
 my %CLASS;
+my %TYPE;
 my $DEBUG;
 
 sub import {
@@ -96,6 +97,8 @@ $acc
         # Install constructor and accessor methods
         eval $pkg;
         $@ && die $@;
+
+        delete $CLASS{$caller}{init};
       },
     };
 
@@ -108,8 +111,11 @@ $acc
   }
 
   $CLASS{$caller}{slot}{$name} = {};
-  $CLASS{$caller}{slot}{$name}{type} = $type
-    if defined $type;
+
+  if (defined $type) {
+    $CLASS{$caller}{slot}{$name}{type} = "$type";
+    $TYPE{"$type"} = $type;
+  }
 
   foreach (qw(def req rw)) {
     $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
@@ -139,7 +145,7 @@ sub new \{
     my $slot  = $slots->{$name};
     my $req   = $slot->{req};
     my $def   = $slot->{def};
-    my $type  = $slot->{type};
+    my $type  = $TYPE{$slot->{type}};
     my $check = $type->inline_check("\$self->{$name}")
       if defined $type;
 
@@ -191,9 +197,14 @@ sub get_slots {
         $slots{$slot} = $CLASS{$_}{slot}{$slot};
       }
       else {
-        foreach my $cfg (qw(rw req def type)) {
-          $slots{$slot}{$cfg} = $CLASS{$_}{slot}{$slot}
-            unless exists $CLASS{$_}{slot}{$slot};
+        foreach my $cfg (qw(rw req def)) {
+          if (!exists $slots{$slot}{$cfg} && exists $CLASS{$_}{slot}{$slot}{$cfg}) {
+            $slots{$slot}{$cfg} = $CLASS{$_}{slot}{$slot}{$cfg};
+          }
+        }
+
+        if (!exists $slots{$slot}{type} && exists $CLASS{$_}{slot}{$slot}{type}) {
+          $slots{$slot}{type} = $TYPE{$CLASS{$_}{slot}{$slot}{type}};
         }
       }
     }
@@ -221,10 +232,9 @@ sub _build_getter_pp {
 
 sub _build_setter_pp {
   my ($class, $name) = @_;
-  my $slot  = $CLASS{$class}{slot}{$name};
-  my $type  = $class->get_slots->{$name}{type};
-  my $check = $type->inline_check('$_[1]')
-    if defined $type;
+  my $slot  = $class->get_slots->{$name};
+  my $type  = $TYPE{$slot->{type}} if $slot->{type};
+  my $check = $type->inline_check('$_[1]') if defined $type;
 
   my $code = "sub $name {\n  if (\@_ > 1) {\n";
 
