@@ -20,6 +20,7 @@ EOS
 
 WriteMakefile(
   NAME             => $name,
+  AUTHOR           => 'Jeff Ober <sysread@fastmail.fm>',
   VERSION_FROM     => "lib/$name.pm",
   ABSTRACT_FROM    => 'README.pod',
   LICENSE          => 'perl_5',
