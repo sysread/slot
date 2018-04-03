@@ -5,11 +5,11 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 sub MY::postamble {
-  return q{
+  return <<EOS;
 
 misc : readme manifest
 
-  };
+EOS
 }
 
 WriteMakefile(
