@@ -5,3 +5,4 @@ MANIFEST
 MANIFEST.SKIP
 t/basics.t
 t/inheritance.t
+README.pod
