@@ -370,8 +370,8 @@ type. The type is validated during construction and in the setter, if the slot
 is read-write.
 
 Slot names must be valid perl identifiers suitable for subroutine names. Types
-must be an instance of a class that supports the C<check> and C<inline_check>
-methods (see L<Type::Tiny/Inlining methods>).
+must be an instance of a class that supports the C<can_be_inlined>,
+C<inline_check>, and C<check> methods (see L<Type::Tiny/Inlining methods>).
 
 =head1 OPTIONS
 
