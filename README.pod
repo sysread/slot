@@ -6,10 +6,6 @@
 
 slot - Simple, efficient, comple-time class declaration
 
-=head1 VERSION
-
-version 0.01
-
 =head1 SYNOPSIS
 
   package Point;

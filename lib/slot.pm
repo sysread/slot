@@ -1,13 +1,15 @@
 package slot;
 
-# ABSTRACT: Simple, efficient, comple-time class declaration
-
 use strict;
 use warnings;
 no strict 'refs';
 no warnings 'redefine';
 use Carp;
 
+our $VERSION = '0.01';
+our %CLASS;
+our %TYPE;
+our $DEBUG;
 our $XS;
 
 BEGIN {
@@ -16,10 +18,6 @@ BEGIN {
     $XS = $@ ? 0 : 1;
   }
 }
-
-our %CLASS;
-our %TYPE;
-our $DEBUG;
 
 sub import {
   my $caller = caller;
@@ -311,141 +309,3 @@ sub quote_identifier {
 }
 
 1;
-
-=head1 SYNOPSIS
-
-  package Point;
-  use Types::Standard -types;
-
-  use slot x => Int, rw => 1, req => 1;
-  use slot y => Int, rw => 1, req => 1;
-  use slot z => Int, rw => 1, def => 0;
-
-  1;
-
-  my $p = Point->new(x => 10, y => 20);
-  $p->x(30); # x is set to 30
-  $p->y;     # 20
-  $p->z;     # 0
-
-=head1 DESCRIPTION
-
-Similar to the L<fields> pragma, C<slot> declares individual fields in a class,
-building a constructor and slot accessor methods.
-
-Although not nearly as full-featured as L<other|Moose> L<solutions|Moo>,
-C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
-dependencies outside of the Perl core distribution. Currently, only the unit
-tests require non-core packages.
-
-C<slot> is intended for use with Perl's bare metal objects. It provides a
-simple mechanism for building accessor and constructor code at compile time.
-
-It does I<not> provide inheritance; that is done by setting C<@ISA> or via
-the C<base> or C<parent> pragmas.
-
-It does I<not> provide method wrappers; that is done with the C<SUPER>
-pseudo-class.
-
-It I<does> build a constructor method, C<new>, with support for default and
-required slots as keyword arguments and type validation of caller-supplied
-values.
-
-It I<does> build accesor methods (reader or combined reader/writer, using the
-slot's name) for each slot declared, with support for type validation.
-
-=head2 CONSTRUCTOR
-
-C<slot> generates a constructor method named C<new>. If there is already an
-existing method with that name, it may be overwritten, depending on the order
-in which C<slot> was imported.
-
-Because slots are declared individually, the constructor as well as the
-accessor methods are generated on the first call to C<new>.
-
-=head2 DECLARING SLOTS
-
-The pragma itself accepts two positional parameters: the slot name and optional
-type. The type is validated during construction and in the setter, if the slot
-is read-write.
-
-Slot names must be valid perl identifiers suitable for subroutine names. Types
-must be an instance of a class that supports the C<can_be_inlined>,
-C<inline_check>, and C<check> methods (see L<Type::Tiny/Inlining methods>).
-
-=head1 OPTIONS
-
-=head2 rw
-
-When true, the accessor method accepts a single parameter to modify the slot
-value. If the slot declares a type, the accessor will croak if the new value
-does not validate.
-
-=head2 req
-
-When true, this constructor will croak if the slot is missing from the named
-parameters passed to the constructor. If the slot also declares a
-L<default value|/def>, this attribute is moot.
-
-=head2 def
-
-When present, this value or code ref which returns a value is used as the
-default if the slot is missing from the named parameters passed to the
-constructor.
-
-If the default is a code ref which generates a value and a type is specified,
-note that the code ref will be called during compilation to validate its type
-rather than re-validating it with every accessor call.
-
-=head1 INHERITANCE
-
-When a class declares a slot which is also declared in the parent class, the
-parent class' settings are overridden. Any options I<not> included in the
-overriding class' slot declaration remain in effect in the child class.
-
-  package A;
-
-  use slot 'foo', rw => 1;
-  use slot 'bar', req => 1, rw => 1;
-
-  1;
-
-  package B;
-
-  use parent -norequire, 'A';
-
-  use slot 'foo', req => 1; # B->foo is req, inherits rw
-  use slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
-
-  1;
-
-=head1 DEBUGGING
-
-Adding C<use slot -debug> to your class will cause C<slot> to print the
-generated constructor and accessor code when C<new> is first called.
-
-=head1 PERFORMANCE
-
-C<slot> is designed to be fast and have a low overhead. When available,
-L<Class::XSAccessor> is used to generate the class accessors. This applies to
-slots that are not writable or are writable but have no declared type.
-
-A minimal benchmark on my admittedly underpowered system compares L<Moose>,
-L<Moo>, and L<slot>. The test includes multiple setters using a mix of
-inherited, typed and untyped, attributes, which ammortizes the benefit of
-Class::XSAccessor to L<Moo> and L<slot>.
-
-  |           Rate   moo moose  slot
-  | moo   355872/s    --  -51%  -63%
-  | moose 719424/s  102%    --  -25%
-  | slot  961538/s  170%   34%    --
-
-Oddly, L<Moo> seemed to perform better running the same test without
-L<Class::XSAccessor> installed.
-
-  |           Rate   moo moose  slot
-  | moo   377358/s    --  -50%  -56%
-  | moose 757576/s  101%    --  -12%
-  | slot  862069/s  128%   14%    --
-
-=cut
