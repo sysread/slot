@@ -1,6 +1,16 @@
+package SlotMakeMaker;
+
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
+
+sub MY::postamble {
+  return q{
+
+misc : readme manifest
+
+  };
+}
 
 WriteMakefile(
   NAME             => 'slot',
@@ -35,3 +45,5 @@ WriteMakefile(
     'Carp' => 0,
   },
 );
+
+1;
