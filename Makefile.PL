@@ -9,6 +9,9 @@ sub MY::postamble {
 
 misc : readme manifest
 
+release : test dist
+\tcpan-upload \$(DISTVNAME).tar.gz  
+
 EOS
 }
 
