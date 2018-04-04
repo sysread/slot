@@ -116,12 +116,12 @@ $acc
 
     # Compile-time generation allows use of CHECK to install our methods once
     # the entire class has been loaded.
-    if (\${^GLOBAL_PHASE} eq 'START') {
+    if (${^GLOBAL_PHASE} ne 'RUN') {
       eval qq{
 CHECK {
-  if (exists \$slot::CLASS{$caller}{init} }) {
-    \$slot::CLASS{$caller}{init}->();
-  }
+  \$slot::CLASS{$caller}{init}->()
+    if exists \$slot::CLASS{$caller}{init};
+}
 };
 
       $@ && die $@;
@@ -132,7 +132,7 @@ CHECK {
     else {
       *{$caller . '::new'} = sub {
         $slot::CLASS{$caller}{init}->();
-        goto \&{ $caller . '::new' };
+        goto $caller->can('new');
       };
     }
   }
