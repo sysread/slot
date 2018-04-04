@@ -490,8 +490,8 @@ the class' C<new> method is called.
 
 =head1 DEBUGGING
 
-Adding C<use slot -debug> to your class will cause C<Class::Slot> to print the
-generated constructor and accessor code just before it is evaluated.
+Adding C<use Class::Slot -debug> to your class will cause C<Class::Slot> to
+print the generated constructor and accessor code just before it is evaluated.
 
 =head1 PERFORMANCE
 
