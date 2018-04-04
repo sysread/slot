@@ -14,7 +14,7 @@ our $XS;
 our $LATE;
 
 BEGIN {
-  unless (defined $XS || $ENV{SLOT_NO_XS}) {
+  unless (defined $XS || $ENV{PROP_NO_XS}) {
     eval 'use Class::XSAccessor';
     $XS = $@ ? 0 : 1;
   }
@@ -482,9 +482,9 @@ C<prop> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 props that are not writable or are writable but have no declared type.
 
-This behavior can be disabled by setting C<$slot::XS> to a negative value,
-although this must be done in a C<BEGIN> block before declaring any slots, or
-by setting the environmental variable C<SLOT_NO_XS> to a positive value before
+This behavior can be disabled by setting C<$prop::XS> to a negative value,
+although this must be done in a C<BEGIN> block before declaring any props, or
+by setting the environmental variable C<PROP_NO_XS> to a positive value before
 running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
