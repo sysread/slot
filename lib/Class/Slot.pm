@@ -8,15 +8,17 @@ use Filter::Simple;
 use Carp;
 
 our $VERSION = '0.01';
-our $DEBUG;
+our $DEBUG_ALL;
+our %DEBUG;
 our $XS;
 our $LATE;
 our %CLASS;
 our %TYPE;
+our %C3;
 
 BEGIN {
-  $DEBUG = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
-  $XS    = $ENV{CLASS_SLOT_NO_XS} ? 1 : undef;
+  $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
+  $XS = $ENV{CLASS_SLOT_NO_XS} ? 1 : undef;
 
   unless (defined $XS) {
     eval 'use Class::XSAccessor';
@@ -34,16 +36,19 @@ sub import {
   my $name   = shift || return;
 
   if ($name eq '-debug') {
-    $DEBUG = 1;
+    $DEBUG{$caller} = 1;
     return;
   }
 
+  if ($name =~ /^c3$/i) {
+    $C3{$caller} = 1;
+    return;
+  }
+
+  # Suss out parameters
   my ($type, %param) = (@_ % 2 == 0)
     ? (undef, @_)
     : @_;
-
-  my $rw  = $param{rw};
-  my $req = $param{req};
 
   croak "slot ${name}'s type is invalid"
     if defined $type
@@ -58,6 +63,8 @@ sub import {
   }
 
   unless (exists $CLASS{$caller}) {
+    $C3{$caller} ||= 0;
+
     $CLASS{$caller} = {
       slot  => {},
       slots => [],
@@ -74,16 +81,8 @@ sub import {
         # Build constructor and accessor methods
         my $ctor = _build_ctor($caller);
 
-        my $acc = '';
-        foreach (@{ $CLASS{$caller}{slots} }) {
-          if ($CLASS{$caller}{slot}{$_}{rw}) {
-            $acc .= _build_setter($caller, $_);
-          } else {
-            $acc .= _build_getter($caller, $_);
-          }
-
-          $acc .= "\n";
-        }
+        my $acc = join "\n", map{ _build_accessor($caller, $_) }
+          keys %{ $caller->get_slots };
 
         my $slots = join ' ', map{ quote_identifier($_) }
           sort keys %{ $caller->get_slots };
@@ -100,7 +99,7 @@ $ctor
 $acc
 };
 
-        if ($DEBUG) {
+        if ($DEBUG_ALL || $DEBUG{$caller}) {
           print "\n";
           print "================================================================================\n";
           print "# slot generated the following code:\n";
@@ -191,9 +190,10 @@ sub new \{
         : "\$Class::Slot::TYPE{'$type'}->check(\$self->{'$ident'})";
 
       $code .= qq{
-  croak '${class}::$ident did not pass validation as a $type'
+  croak '${class}::$ident did not pass validation as type $type'
     unless !exists \$self->{'$ident'}
         || $check;
+
 };
     }
 
@@ -221,32 +221,72 @@ sub new \{
 }
 
 #-------------------------------------------------------------------------------
-# Settings
+# Slot data
 #-------------------------------------------------------------------------------
+sub get_mro {
+  my @todo = ( $_[0] );
+  my %seen;
+  my @mro;
+
+  while (my $class = shift @todo) {
+    next if $seen{$class};
+    $seen{$class} = 1;
+
+    if (@{$class . '::ISA'}) {
+      if ($C3{$class}) {
+        push @todo, @{$class . '::ISA'};
+      } else {
+        unshift @todo, @{$class . '::ISA'};
+      }
+    }
+
+    push @mro, $class;
+  }
+
+  return @mro;
+}
+
 sub get_slots {
-  my ($class) = @_;
+  my ($class, $name) = @_;
+  my @mro = get_mro $class;
   my %slots;
 
-  foreach ($class, @{ $class . '::ISA' }) {
-    foreach my $slot (@{$CLASS{$_}{slots}}) {
+  foreach my $class (@mro) {
+    my @slots = defined $name ? ($name) : @{$CLASS{$class}{slots}};
+
+    foreach my $slot (@slots) {
       if (!exists $slots{$slot}) {
-        $slots{$slot} = $CLASS{$_}{slot}{$slot};
+        $slots{$slot} = $CLASS{$class}{slot}{$slot};
       }
       else {
         foreach my $cfg (qw(rw req def)) {
-          if (!exists $slots{$slot}{$cfg} && exists $CLASS{$_}{slot}{$slot}{$cfg}) {
-            $slots{$slot}{$cfg} = $CLASS{$_}{slot}{$slot}{$cfg};
+          if (!exists $slots{$slot}{$cfg} && exists $CLASS{$class}{slot}{$slot}{$cfg}) {
+            $slots{$slot}{$cfg} = $CLASS{$class}{slot}{$slot}{$cfg};
           }
         }
 
-        if (!exists $slots{$slot}{type} && exists $CLASS{$_}{slot}{$slot}{type}) {
-          $slots{$slot}{type} = $TYPE{$CLASS{$_}{slot}{$slot}{type}};
+        if (!exists $slots{$slot}{type} && exists $CLASS{$class}{slot}{$slot}{type}) {
+          $slots{$slot}{type} = $TYPE{$CLASS{$class}{slot}{$slot}{type}};
         }
       }
     }
   }
 
-  return \%slots;
+  if (defined $name) {
+    return $slots{$name};
+  } else {
+    return \%slots;
+  }
+}
+
+#-------------------------------------------------------------------------------
+# Accessors
+#-------------------------------------------------------------------------------
+sub _build_accessor {
+  my ($class, $name) = @_;
+  return $class->get_slots($name)->{'rw'}
+    ? _build_setter($class, $name)
+    : _build_getter($class, $name);
 }
 
 #-------------------------------------------------------------------------------
@@ -286,7 +326,7 @@ sub $ident \{
 #-------------------------------------------------------------------------------
 sub _build_setter {
   my ($class, $name) = @_;
-  if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
+  if ($XS && !$class->get_slots($name)->{type}) {
     return _build_setter_xs($class, $name);
   } else {
     return _build_setter_pp($class, $name);
@@ -301,11 +341,11 @@ sub _build_setter_xs {
 
 sub _build_setter_pp {
   my ($class, $name) = @_;
-  my $slot  = $class->get_slots->{$name};
+  my $slot  = $class->get_slots($name);
   my $type  = $TYPE{$slot->{type}} if $slot->{type};
   my $ident = quote_identifier($name);
 
-  my $code = "sub $ident {\n  if (\@_ > 1) {\n";
+  my $code = "sub $ident {\n  if (\@_ > 1) {";
 
   if ($type) {
     my $check = $type->can_be_inlined
@@ -313,7 +353,7 @@ sub _build_setter_pp {
       : "\$Class::Slot::TYPE{'$type'}->check(\$_[1])";
 
       $code .= qq{
-    croak '${class}::$ident did not pass validation as a $type'
+    croak '${class}::$ident did not pass validation as type $type'
       unless $check;
 };
   }
@@ -337,6 +377,11 @@ sub quote_identifier {
   return $ident;
 }
 
+#-------------------------------------------------------------------------------
+# Source filter:
+#   * 'use slot' -> 'use Class::Slot'
+#   * 'slot::'   -> 'Class::Slot::'
+#-------------------------------------------------------------------------------
 FILTER {
   s/\buse slot\b/use Class::Slot/g;
   s/\bslot::/Class::Slot::/g;
@@ -397,7 +442,8 @@ slot's name) for each slot declared, with support for type validation.
 =head1 @SLOTS
 
 The C<@SLOTS> package variable is added to the declaring package and is a list
-of quoted slot identifiers.
+of quoted slot identifiers. C<@SLOTS> includes I<all> slots available to this
+class, including those defined in its ancestors.
 
 =head1 CONSTRUCTOR
 
