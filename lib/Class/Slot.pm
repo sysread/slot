@@ -90,19 +90,14 @@ sub import {
 
         my $pkg  = qq{
 package $caller;
-use Carp;
 no warnings 'redefine';
+no Class::Slot;
+use Carp;
 
-our \@SLOTS;
-
-\@SLOTS = qw($slots);;
+our \@SLOTS = qw($slots);
 
 $ctor
-
 $acc
-
-no Class::Slot;
-
 };
 
         if ($DEBUG) {
