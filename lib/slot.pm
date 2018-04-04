@@ -114,17 +114,27 @@ $acc
       },
     };
 
-    eval "CHECK { \$slot::CLASS{$caller}{init}->() if exists \$slot::CLASS{$caller}{init} }";
-    $@ && die $@;
+    # Compile-time generation allows use of CHECK to install our methods once
+    # the entire class has been loaded.
+    if (\${^GLOBAL_PHASE} eq 'START') {
+      eval qq{
+CHECK {
+  if (exists \$slot::CLASS{$caller}{init} }) {
+    \$slot::CLASS{$caller}{init}->();
+  }
+};
 
-=cut
-    # Temporary definition of new that includes code to initialize the class as
-    # configured for slots.
-    *{ $caller . '::new' } = sub {
-      $CLASS{$_[0]}{init}->();
-      goto $_[0]->can('new');
-    };
-=cut
+      $@ && die $@;
+    }
+    # Whereas with a run-time eval the definitions of all slots are not yet
+    # known and CHECK is not available, so methods may be installed on the
+    # first call to 'new'.
+    else {
+      *{$caller . '::new'} = sub {
+        $slot::CLASS{$caller}{init}->();
+        goto \&{ $caller . '::new' };
+      };
+    }
   }
 
   $CLASS{$caller}{slot}{$name} = {};
