@@ -11,12 +11,17 @@ our %CLASS;
 our %TYPE;
 our $DEBUG;
 our $XS;
+our $LATE;
 
 BEGIN {
   unless (defined $XS) {
     eval 'use Class::XSAccessor';
     $XS = $@ ? 0 : 1;
   }
+}
+
+INIT {
+  $LATE = 1;
 }
 
 sub import {
@@ -114,9 +119,18 @@ $acc
       },
     };
 
+    # Whereas with a run-time eval the definitions of all slots are not yet
+    # known and CHECK is not available, so methods may be installed on the
+    # first call to 'new'.
+    if ($LATE) {
+      *{$caller . '::new'} = sub {
+        $slot::CLASS{$caller}{init}->();
+        goto $caller->can('new');
+      };
+    }
     # Compile-time generation allows use of CHECK to install our methods once
     # the entire class has been loaded.
-    if (${^GLOBAL_PHASE} ne 'RUN') {
+    else {
       eval qq{
 CHECK {
   \$slot::CLASS{$caller}{init}->()
@@ -125,15 +139,6 @@ CHECK {
 };
 
       $@ && die $@;
-    }
-    # Whereas with a run-time eval the definitions of all slots are not yet
-    # known and CHECK is not available, so methods may be installed on the
-    # first call to 'new'.
-    else {
-      *{$caller . '::new'} = sub {
-        $slot::CLASS{$caller}{init}->();
-        goto $caller->can('new');
-      };
     }
   }
 

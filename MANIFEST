@@ -6,3 +6,4 @@ MANIFEST.SKIP
 README.pod
 t/basics.t
 t/inheritance.t
+t/late_binding.t
