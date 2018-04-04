@@ -1,10 +1,12 @@
 =head1 NAME
 
-slot - Simple, efficient, comple-time class declaration
+Class::Slot - Simple, efficient, comple-time class declaration
 
 =head1 SYNOPSIS
 
   package Point;
+
+  use Class::Slot;
   use Types::Standard -types;
 
   use slot x => Int, rw => 1, req => 1;
@@ -140,10 +142,10 @@ C<slot> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 slots that are not writable or are writable but have no declared type.
 
-This behavior can be disabled by setting C<$slot::XS> to a negative value,
-although this must be done in a C<BEGIN> block before declaring any slots, or
-by setting the environmental variable C<SLOT_NO_XS> to a positive value before
-running.
+This behavior can be disabled by setting C<$Class::Slot::XS> to a negative
+value, although this must be done in a C<BEGIN> block before declaring any
+slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a positive
+value before running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<slot>. The test includes multiple setters using a mix of

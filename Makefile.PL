@@ -4,9 +4,6 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
-my $name  = 'slot';
-my $clean = 'slot';
-
 sub MY::postamble {
   return <<EOS;
 
@@ -19,9 +16,9 @@ EOS
 }
 
 WriteMakefile(
-  NAME             => $name,
+  NAME             => 'Class::Slot',
   AUTHOR           => 'Jeff Ober <sysread@fastmail.fm>',
-  VERSION_FROM     => "lib/$name.pm",
+  VERSION_FROM     => "lib/Class/Slot.pm",
   ABSTRACT_FROM    => 'README.pod',
   LICENSE          => 'perl_5',
   MIN_PERL_VERSION => '5.008',
@@ -29,22 +26,22 @@ WriteMakefile(
 
   META_MERGE => {
    resources => {
-      homepage => "https://github.com/sysread/$clean",
+      homepage => "https://github.com/sysread/slot",
 
       bugtracker => {
-         web => "https://github.com/sysread/$clean/issues"
+         web => "https://github.com/sysread/slot/issues"
       },
 
       repository => {
          type => "git",
-         url  => "https://github.com/sysread/$clean.git",
-         web  => "https://github.com/sysread/$clean"
+         url  => "https://github.com/sysread/slot.git",
+         web  => "https://github.com/sysread/slot"
       }
    },
   },
 
   MAN3PODS => {
-    'README.pod' => "blib/man3/$name.3",
+    'README.pod' => "blib/man3/Class::Slot.3",
   },
 
   test => {
@@ -52,7 +49,7 @@ WriteMakefile(
   },
 
   clean => {
-    FILES => "*.bak $clean-*.tar.gz",
+    FILES => "*.bak Class-Slot-*.tar.gz",
   },
 
   BUILD_REQUIRES => {
@@ -65,7 +62,8 @@ WriteMakefile(
   },
 
   PREREQ_PM => {
-    'Carp' => 0,
+    'Carp'           => 0,
+    'Filter::Simple' => 0,
   },
 );
 

@@ -1,20 +1,24 @@
-package slot;
+package Class::Slot;
 
 use strict;
 use warnings;
 no strict 'refs';
 no warnings 'redefine';
+use Filter::Simple;
 use Carp;
 
 our $VERSION = '0.01';
-our %CLASS;
-our %TYPE;
 our $DEBUG;
 our $XS;
 our $LATE;
+our %CLASS;
+our %TYPE;
 
 BEGIN {
-  unless (defined $XS || $ENV{SLOT_NO_XS}) {
+  $DEBUG = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
+  $XS    = $ENV{CLASS_SLOT_NO_XS} ? 1 : undef;
+
+  unless (defined $XS) {
     eval 'use Class::XSAccessor';
     $XS = $@ ? 0 : 1;
   }
@@ -27,7 +31,7 @@ INIT {
 sub import {
   my $caller = caller;
   my $class  = shift;
-  my $name   = shift;
+  my $name   = shift || return;
 
   if ($name eq '-debug') {
     $DEBUG = 1;
@@ -97,6 +101,8 @@ $ctor
 
 $acc
 
+no Class::Slot;
+
 };
 
         if ($DEBUG) {
@@ -124,7 +130,7 @@ $acc
     # first call to 'new'.
     if ($LATE) {
       *{$caller . '::new'} = sub {
-        $slot::CLASS{$caller}{init}->();
+        $Class::Slot::CLASS{$caller}{init}->();
         goto $caller->can('new');
       };
     }
@@ -133,8 +139,8 @@ $acc
     else {
       eval qq{
 CHECK {
-  \$slot::CLASS{$caller}{init}->()
-    if exists \$slot::CLASS{$caller}{init};
+  \$Class::Slot::CLASS{$caller}{init}->()
+    if exists \$Class::Slot::CLASS{$caller}{init};
 }
 };
 
@@ -187,7 +193,7 @@ sub new \{
     if ($type) {
       my $check = $type->can_be_inlined
         ? $type->inline_check("\$self->{'$ident'}")
-        : "\$slot::TYPE{'$type'}->check(\$self->{'$ident'})";
+        : "\$Class::Slot::TYPE{'$type'}->check(\$self->{'$ident'})";
 
       $code .= qq{
   croak '${class}::$ident did not pass validation as a $type'
@@ -309,7 +315,7 @@ sub _build_setter_pp {
   if ($type) {
     my $check = $type->can_be_inlined
       ? $type->inline_check('$_[1]')
-      : "\$slot::TYPE{'$type'}->check(\$_[1])";
+      : "\$Class::Slot::TYPE{'$type'}->check(\$_[1])";
 
       $code .= qq{
     croak '${class}::$ident did not pass validation as a $type'
@@ -336,17 +342,24 @@ sub quote_identifier {
   return $ident;
 }
 
+FILTER {
+  s/\buse slot\b/use Class::Slot/g;
+  s/\bslot::/Class::Slot::/g;
+};
+
 1;
 
 __END__
 
 =head1 NAME
 
-slot - Simple, efficient, comple-time class declaration
+Class::Slot - Simple, efficient, comple-time class declaration
 
 =head1 SYNOPSIS
 
   package Point;
+
+  use Class::Slot;
   use Types::Standard -types;
 
   use slot x => Int, rw => 1, req => 1;
@@ -482,10 +495,10 @@ C<slot> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 slots that are not writable or are writable but have no declared type.
 
-This behavior can be disabled by setting C<$slot::XS> to a negative value,
-although this must be done in a C<BEGIN> block before declaring any slots, or
-by setting the environmental variable C<SLOT_NO_XS> to a positive value before
-running.
+This behavior can be disabled by setting C<$Class::Slot::XS> to a negative
+value, although this must be done in a C<BEGIN> block before declaring any
+slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a positive
+value before running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<slot>. The test includes multiple setters using a mix of

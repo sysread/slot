@@ -1,5 +1,5 @@
 Changes
-lib/slot.pm
+lib/Class/Slot.pm
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP

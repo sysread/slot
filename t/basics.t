@@ -1,9 +1,13 @@
 package A;
+
+use Class::Slot;
 use Types::Standard -types;
+
 use slot foo => Int, rw => 1, def => 42;
 use slot bar => Str, req => 1;
 use slot baz => req => 1, def => 'fnord';
 use slot 'foo $bar';
+
 1;
 
 
