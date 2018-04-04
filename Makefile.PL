@@ -4,8 +4,8 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
-my $name  = 'slot';
-my $clean = 'slot';
+my $name  = 'prop';
+my $clean = 'prop';
 
 sub MY::postamble {
   return <<EOS;

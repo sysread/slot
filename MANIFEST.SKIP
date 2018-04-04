@@ -68,5 +68,5 @@
 ^\.appveyor\.yml
 ^\.travis\.yml
 ^scratch\/
-^slot-
+^prop-
 readme.PL
