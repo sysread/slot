@@ -14,7 +14,7 @@ our $XS;
 our $LATE;
 
 BEGIN {
-  unless (defined $XS) {
+  unless (defined $XS || $ENV{SLOT_NO_XS}) {
     eval 'use Class::XSAccessor';
     $XS = $@ ? 0 : 1;
   }
@@ -481,6 +481,11 @@ generated constructor and accessor code just before it is evaluated.
 C<slot> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 slots that are not writable or are writable but have no declared type.
+
+This behavior can be disabled by setting C<$slot::XS> to a negative value,
+although this must be done in a C<BEGIN> block before declaring any slots, or
+by setting the environmental variable C<SLOT_NO_XS> to a positive value before
+running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<slot>. The test includes multiple setters using a mix of
