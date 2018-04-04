@@ -1,4 +1,4 @@
-package slot;
+package prop;
 
 use strict;
 use warnings;
@@ -41,7 +41,7 @@ sub import {
   my $rw  = $param{rw};
   my $req = $param{req};
 
-  croak "slot ${name}'s type is invalid"
+  croak "prop ${name}'s type is invalid"
     if defined $type
     && !ref $type
     && !$type->can('can_be_inlined')
@@ -55,8 +55,8 @@ sub import {
 
   unless (exists $CLASS{$caller}) {
     $CLASS{$caller} = {
-      slot  => {},
-      slots => [],
+      prop  => {},
+      props => [],
       ctor  => undef,
       init  => sub{
         # Ensure any accessor methods defined by $caller's parent class(es)
@@ -71,8 +71,8 @@ sub import {
         my $ctor = _build_ctor($caller);
 
         my $acc = '';
-        foreach (@{ $CLASS{$caller}{slots} }) {
-          if ($CLASS{$caller}{slot}{$_}{rw}) {
+        foreach (@{ $CLASS{$caller}{props} }) {
+          if ($CLASS{$caller}{prop}{$_}{rw}) {
             $acc .= _build_setter($caller, $_);
           } else {
             $acc .= _build_getter($caller, $_);
@@ -81,17 +81,17 @@ sub import {
           $acc .= "\n";
         }
 
-        my $slots = join ' ', map{ quote_identifier($_) }
-          sort keys %{ $caller->get_slots };
+        my $props = join ' ', map{ quote_identifier($_) }
+          sort keys %{ $caller->get_props };
 
         my $pkg  = qq{
 package $caller;
 use Carp;
 no warnings 'redefine';
 
-our \@SLOTS;
+our \@PROPS;
 
-\@SLOTS = qw($slots);;
+\@PROPS = qw($props);;
 
 $ctor
 
@@ -102,11 +102,11 @@ $acc
         if ($DEBUG) {
           print "\n";
           print "================================================================================\n";
-          print "# slot generated the following code:\n";
+          print "# prop generated the following code:\n";
           print "================================================================================\n";
           print "$pkg\n";
           print "================================================================================\n";
-          print "# end of slot-generated code\n";
+          print "# end of prop-generated code\n";
           print "================================================================================\n";
           print "\n";
         }
@@ -119,12 +119,12 @@ $acc
       },
     };
 
-    # Whereas with a run-time eval the definitions of all slots are not yet
+    # Whereas with a run-time eval the definitions of all props are not yet
     # known and CHECK is not available, so methods may be installed on the
     # first call to 'new'.
     if ($LATE) {
       *{$caller . '::new'} = sub {
-        $slot::CLASS{$caller}{init}->();
+        $prop::CLASS{$caller}{init}->();
         goto $caller->can('new');
       };
     }
@@ -133,8 +133,8 @@ $acc
     else {
       eval qq{
 CHECK {
-  \$slot::CLASS{$caller}{init}->()
-    if exists \$slot::CLASS{$caller}{init};
+  \$prop::CLASS{$caller}{init}->()
+    if exists \$prop::CLASS{$caller}{init};
 }
 };
 
@@ -142,21 +142,21 @@ CHECK {
     }
   }
 
-  $CLASS{$caller}{slot}{$name} = {};
+  $CLASS{$caller}{prop}{$name} = {};
 
   if (defined $type) {
-    $CLASS{$caller}{slot}{$name}{type} = "$type";
+    $CLASS{$caller}{prop}{$name}{type} = "$type";
     $TYPE{"$type"} = $type;
   }
 
   foreach (qw(def req rw)) {
-    $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
+    $CLASS{$caller}{prop}{$name}{$_} = $param{$_}
       if exists $param{$_};
   }
 
-  *{ $caller . '::get_slots' } = \&get_slots;
+  *{ $caller . '::get_props' } = \&get_props;
 
-  push @{ $CLASS{$caller}{slots} }, $name;
+  push @{ $CLASS{$caller}{props} }, $name;
 }
 
 #-------------------------------------------------------------------------------
@@ -171,13 +171,13 @@ sub new \{
   my \$self  = bless { \@_ }, \$class;
 };
 
-  my $slots = $class->get_slots;
+  my $props = $class->get_props;
 
-  foreach my $name (keys %$slots) {
-    my $slot  = $slots->{$name};
-    my $req   = $slot->{req};
-    my $def   = $slot->{def};
-    my $type  = $TYPE{$slot->{type}} if exists $slot->{type};
+  foreach my $name (keys %$props) {
+    my $prop  = $props->{$name};
+    my $req   = $prop->{req};
+    my $def   = $prop->{def};
+    my $type  = $TYPE{$prop->{type}} if exists $prop->{type};
     my $ident = quote_identifier($name);
 
     if ($req && !defined $def) {
@@ -187,7 +187,7 @@ sub new \{
     if ($type) {
       my $check = $type->can_be_inlined
         ? $type->inline_check("\$self->{'$ident'}")
-        : "\$slot::TYPE{'$type'}->check(\$self->{'$ident'})";
+        : "\$prop::TYPE{'$type'}->check(\$self->{'$ident'})";
 
       $code .= qq{
   croak '${class}::$ident did not pass validation as a $type'
@@ -200,10 +200,10 @@ sub new \{
       $code .= "  \$self->{'$ident'} = ";
 
       if (ref $def eq 'CODE') {
-        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}->(\$self)";
+        $code .= "\$CLASS{$class}{prop}{'$ident'}{def}->(\$self)";
       }
       else {
-        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}";
+        $code .= "\$CLASS{$class}{prop}{'$ident'}{def}";
       }
 
       $code .= " unless exists \$self->{'$ident'};\n";
@@ -222,30 +222,30 @@ sub new \{
 #-------------------------------------------------------------------------------
 # Settings
 #-------------------------------------------------------------------------------
-sub get_slots {
+sub get_props {
   my ($class) = @_;
-  my %slots;
+  my %props;
 
   foreach ($class, @{ $class . '::ISA' }) {
-    foreach my $slot (@{$CLASS{$_}{slots}}) {
-      if (!exists $slots{$slot}) {
-        $slots{$slot} = $CLASS{$_}{slot}{$slot};
+    foreach my $prop (@{$CLASS{$_}{props}}) {
+      if (!exists $props{$prop}) {
+        $props{$prop} = $CLASS{$_}{prop}{$prop};
       }
       else {
         foreach my $cfg (qw(rw req def)) {
-          if (!exists $slots{$slot}{$cfg} && exists $CLASS{$_}{slot}{$slot}{$cfg}) {
-            $slots{$slot}{$cfg} = $CLASS{$_}{slot}{$slot}{$cfg};
+          if (!exists $props{$prop}{$cfg} && exists $CLASS{$_}{prop}{$prop}{$cfg}) {
+            $props{$prop}{$cfg} = $CLASS{$_}{prop}{$prop}{$cfg};
           }
         }
 
-        if (!exists $slots{$slot}{type} && exists $CLASS{$_}{slot}{$slot}{type}) {
-          $slots{$slot}{type} = $TYPE{$CLASS{$_}{slot}{$slot}{type}};
+        if (!exists $props{$prop}{type} && exists $CLASS{$_}{prop}{$prop}{type}) {
+          $props{$prop}{type} = $TYPE{$CLASS{$_}{prop}{$prop}{type}};
         }
       }
     }
   }
 
-  return \%slots;
+  return \%props;
 }
 
 #-------------------------------------------------------------------------------
@@ -285,7 +285,7 @@ sub $ident \{
 #-------------------------------------------------------------------------------
 sub _build_setter {
   my ($class, $name) = @_;
-  if ($XS && !$CLASS{$class}{slot}{$name}{type}) {
+  if ($XS && !$CLASS{$class}{prop}{$name}{type}) {
     return _build_setter_xs($class, $name);
   } else {
     return _build_setter_pp($class, $name);
@@ -300,8 +300,8 @@ sub _build_setter_xs {
 
 sub _build_setter_pp {
   my ($class, $name) = @_;
-  my $slot  = $class->get_slots->{$name};
-  my $type  = $TYPE{$slot->{type}} if $slot->{type};
+  my $prop  = $class->get_props->{$name};
+  my $type  = $TYPE{$prop->{type}} if $prop->{type};
   my $ident = quote_identifier($name);
 
   my $code = "sub $ident {\n  if (\@_ > 1) {\n";
@@ -309,7 +309,7 @@ sub _build_setter_pp {
   if ($type) {
     my $check = $type->can_be_inlined
       ? $type->inline_check('$_[1]')
-      : "\$slot::TYPE{'$type'}->check(\$_[1])";
+      : "\$prop::TYPE{'$type'}->check(\$_[1])";
 
       $code .= qq{
     croak '${class}::$ident did not pass validation as a $type'
@@ -342,16 +342,16 @@ __END__
 
 =head1 NAME
 
-slot - Simple, efficient, comple-time class declaration
+prop - Simple, efficient, comple-time class declaration
 
 =head1 SYNOPSIS
 
   package Point;
   use Types::Standard -types;
 
-  use slot x => Int, rw => 1, req => 1;
-  use slot y => Int, rw => 1, req => 1;
-  use slot z => Int, rw => 1, def => 0;
+  use prop x => Int, rw => 1, req => 1;
+  use prop y => Int, rw => 1, req => 1;
+  use prop z => Int, rw => 1, def => 0;
 
   1;
 
@@ -362,15 +362,15 @@ slot - Simple, efficient, comple-time class declaration
 
 =head1 DESCRIPTION
 
-Similar to the L<fields> pragma, C<slot> declares individual fields in a class,
-building a constructor and slot accessor methods.
+Similar to the L<fields> pragma, C<prop> declares individual fields in a class,
+building a constructor and prop accessor methods.
 
 Although not nearly as full-featured as L<other|Moose> L<solutions|Moo>,
-C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
+C<prop> is light-weight, fast, works with basic Perl objects, and imposes no
 dependencies outside of the Perl core distribution. Currently, only the unit
 tests require non-core packages.
 
-C<slot> is intended for use with Perl's bare metal objects. It provides a
+C<prop> is intended for use with Perl's bare metal objects. It provides a
 simple mechanism for building accessor and constructor code at compile time.
 
 It does I<not> provide inheritance; that is done by setting C<@ISA> or via
@@ -380,33 +380,33 @@ It does I<not> provide method wrappers; that is done with the C<SUPER>
 pseudo-class.
 
 It I<does> build a constructor method, C<new>, with support for default and
-required slots as keyword arguments and type validation of caller-supplied
+required props as keyword arguments and type validation of caller-supplied
 values.
 
 It I<does> build accesor methods (reader or combined reader/writer, using the
-slot's name) for each slot declared, with support for type validation.
+prop's name) for each prop declared, with support for type validation.
 
-=head1 @SLOTS
+=head1 @PROPS
 
-The C<@SLOTS> package variable is added to the declaring package and is a
-list of quoted slot identifiers.
+The C<@PROPS> package variable is added to the declaring package and is a
+list of quoted prop identifiers.
 
 =head1 CONSTRUCTOR
 
-C<slot> generates a constructor method named C<new>. If there is already an
+C<prop> generates a constructor method named C<new>. If there is already an
 existing method with that name, it may be overwritten, depending on the order
-in which C<slot> was imported.
+in which C<prop> was imported.
 
-Because slots are declared individually, the constructor as well as the
+Because props are declared individually, the constructor as well as the
 accessor methods are generated on the first call to C<new>.
 
-=head1 DECLARING SLOTS
+=head1 DECLARING PROPS
 
-The pragma itself accepts two positional parameters: the slot name and optional
-type. The type is validated during construction and in the setter, if the slot
+The pragma itself accepts two positional parameters: the prop name and optional
+type. The type is validated during construction and in the setter, if the prop
 is read-write.
 
-Slot names must be valid perl identifiers suitable for subroutine names. Types
+Prop names must be valid perl identifiers suitable for subroutine names. Types
 must be an instance of a class that supports the C<can_be_inlined>,
 C<inline_check>, and C<check> methods (see L<Type::Tiny/Inlining methods>).
 
@@ -414,20 +414,20 @@ C<inline_check>, and C<check> methods (see L<Type::Tiny/Inlining methods>).
 
 =head2 rw
 
-When true, the accessor method accepts a single parameter to modify the slot
-value. If the slot declares a type, the accessor will croak if the new value
+When true, the accessor method accepts a single parameter to modify the prop
+value. If the prop declares a type, the accessor will croak if the new value
 does not validate.
 
 =head2 req
 
-When true, this constructor will croak if the slot is missing from the named
-parameters passed to the constructor. If the slot also declares a
+When true, this constructor will croak if the prop is missing from the named
+parameters passed to the constructor. If the prop also declares a
 L<default value|/def>, this attribute is moot.
 
 =head2 def
 
 When present, this value or code ref which returns a value is used as the
-default if the slot is missing from the named parameters passed to the
+default if the prop is missing from the named parameters passed to the
 constructor.
 
 If the default is a code ref which generates a value and a type is specified,
@@ -436,14 +436,14 @@ rather than re-validating it with every accessor call.
 
 =head1 INHERITANCE
 
-When a class declares a slot which is also declared in the parent class, the
+When a class declares a prop which is also declared in the parent class, the
 parent class' settings are overridden. Any options I<not> included in the
-overriding class' slot declaration remain in effect in the child class.
+overriding class' prop declaration remain in effect in the child class.
 
   package A;
 
-  use slot 'foo', rw => 1;
-  use slot 'bar', req => 1, rw => 1;
+  use prop 'foo', rw => 1;
+  use prop 'bar', req => 1, rw => 1;
 
   1;
 
@@ -451,8 +451,8 @@ overriding class' slot declaration remain in effect in the child class.
 
   use parent -norequire, 'A';
 
-  use slot 'foo', req => 1; # B->foo is req, inherits rw
-  use slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
+  use prop 'foo', req => 1; # B->foo is req, inherits rw
+  use prop 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
 
   1;
 
@@ -460,27 +460,27 @@ overriding class' slot declaration remain in effect in the child class.
 
 =head2 BEGIN
 
-C<use slot> statements are evaluated by the perl interpreter at the earliest
-possible moment. At this time, C<slot> is still gathering slot declarations and
+C<use prop> statements are evaluated by the perl interpreter at the earliest
+possible moment. At this time, C<prop> is still gathering prop declarations and
 the class is not fully assembled.
 
 =head2 CHECK
 
-All slots are assumed to be declared by the C<CHECK> phase. The first slot
+All props are assumed to be declared by the C<CHECK> phase. The first prop
 declaration adds a C<CHECK> block to the package that installs all generated
 accessor methods in the declaring class. This may additionally trigger any
 parent classes (identified by C<@ISA>) which are not yet complete.
 
 =head1 DEBUGGING
 
-Adding C<use slot -debug> to your class will cause C<slot> to print the
+Adding C<use prop -debug> to your class will cause C<prop> to print the
 generated constructor and accessor code just before it is evaluated.
 
 =head1 PERFORMANCE
 
-C<slot> is designed to be fast and have a low overhead. When available,
+C<prop> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
-slots that are not writable or are writable but have no declared type.
+props that are not writable or are writable but have no declared type.
 
 This behavior can be disabled by setting C<$slot::XS> to a negative value,
 although this must be done in a C<BEGIN> block before declaring any slots, or
@@ -488,22 +488,22 @@ by setting the environmental variable C<SLOT_NO_XS> to a positive value before
 running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
-L<Moo>, and L<slot>. The test includes multiple setters using a mix of
+L<Moo>, and L<prop>. The test includes multiple setters using a mix of
 inherited, typed and untyped, attributes, which ammortizes the benefit of
-Class::XSAccessor to L<Moo> and L<slot>.
+Class::XSAccessor to L<Moo> and L<prop>.
 
-  |           Rate   moo moose  slot
+  |           Rate   moo moose  prop
   | moo   355872/s    --  -51%  -63%
   | moose 719424/s  102%    --  -25%
-  | slot  961538/s  170%   34%    --
+  | prop  961538/s  170%   34%    --
 
 Oddly, L<Moo> seemed to perform better running the same test without
 L<Class::XSAccessor> installed.
 
-  |           Rate   moo moose  slot
+  |           Rate   moo moose  prop
   | moo   377358/s    --  -50%  -56%
   | moose 757576/s  101%    --  -12%
-  | slot  862069/s  128%   14%    --
+  | prop  862069/s  128%   14%    --
 
 =head1 AUTHOR
 
