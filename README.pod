@@ -49,7 +49,8 @@ slot's name) for each slot declared, with support for type validation.
 =head1 @SLOTS
 
 The C<@SLOTS> package variable is added to the declaring package and is a list
-of quoted slot identifiers.
+of quoted slot identifiers. C<@SLOTS> includes I<all> slots available to this
+class, including those defined in its ancestors.
 
 =head1 CONSTRUCTOR
 

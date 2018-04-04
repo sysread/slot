@@ -377,6 +377,30 @@ sub quote_identifier {
   return $ident;
 }
 
+sub install_sub {
+  my ($class, $name, $code) = @_;
+  my $caller = caller;
+  my $sym = $class . '::' . quote_identifier($name);
+
+  *{$sym} = sub {
+    eval qq{
+package $class;
+sub $name \{
+$code
+\}
+package $caller;
+    };
+
+    $@ && die $@;
+    goto $class->can($name);
+  };
+}
+
+sub install_method {
+  my ($class, $name, $code) = @_;
+  install_sub($class, $name, "  my \$self = shift;\n$code");
+}
+
 #-------------------------------------------------------------------------------
 # Source filter:
 #   * 'use slot' -> 'use Class::Slot'

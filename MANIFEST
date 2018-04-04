@@ -7,3 +7,4 @@ README.pod
 t/basics.t
 t/inheritance.t
 t/late_binding.t
+t/util.t
