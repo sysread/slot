@@ -3,6 +3,6 @@ lib/slot.pm
 Makefile.PL
 MANIFEST
 MANIFEST.SKIP
+README.pod
 t/basics.t
 t/inheritance.t
-README.pod

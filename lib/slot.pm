@@ -371,7 +371,12 @@ values.
 It I<does> build accesor methods (reader or combined reader/writer, using the
 slot's name) for each slot declared, with support for type validation.
 
-=head2 CONSTRUCTOR
+=head1 @SLOTS
+
+The C<@SLOTS> package variable is added to the declaring package and is a
+list of quoted slot identifiers.
+
+=head1 CONSTRUCTOR
 
 C<slot> generates a constructor method named C<new>. If there is already an
 existing method with that name, it may be overwritten, depending on the order
@@ -380,7 +385,7 @@ in which C<slot> was imported.
 Because slots are declared individually, the constructor as well as the
 accessor methods are generated on the first call to C<new>.
 
-=head2 DECLARING SLOTS
+=head1 DECLARING SLOTS
 
 The pragma itself accepts two positional parameters: the slot name and optional
 type. The type is validated during construction and in the setter, if the slot
@@ -436,10 +441,25 @@ overriding class' slot declaration remain in effect in the child class.
 
   1;
 
+=head1 COMPILATION PHASES
+
+=head2 BEGIN
+
+C<use slot> statements are evaluated by the perl interpreter at the earliest
+possible moment. At this time, C<slot> is still gathering slot declarations and
+the class is not fully assembled.
+
+=head2 CHECK
+
+All slots are assumed to be declared by the C<CHECK> phase. The first slot
+declaration adds a C<CHECK> block to the package that installs all generated
+accessor methods in the declaring class. This may additionally trigger any
+parent classes (identified by C<@ISA>) which are not yet complete.
+
 =head1 DEBUGGING
 
 Adding C<use slot -debug> to your class will cause C<slot> to print the
-generated constructor and accessor code when C<new> is first called.
+generated constructor and accessor code just before it is evaluated.
 
 =head1 PERFORMANCE
 
