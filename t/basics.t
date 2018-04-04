@@ -18,7 +18,7 @@ use Test::More;
 is slot::quote_identifier('a-b^c'), 'a_b_c', 'quote identifier: individual chars';
 is slot::quote_identifier('a----b'), 'a_b', 'quote identifier: multiple chars';
 
-is_deeply \@A::SLOTS, [qw(foo bar baz foo_bar)], '@SLOTS';
+is_deeply \@A::SLOTS, [qw(bar baz foo foo_bar)], '@SLOTS';
 
 # Constructor
 ok my $o = A->new(foo => 1, bar => 'slack', baz => 'bat'), 'ctor';
