@@ -22,19 +22,19 @@ Class::Slot - Simple, efficient, comple-time class declaration
 
 =head1 DESCRIPTION
 
-Similar to the L<fields> pragma, C<slot> declares individual fields in a class,
-building a constructor and slot accessor methods.
+Similar to the L<fields> pragma, C<use slot> declares individual fields in a
+class, building a constructor and slot accessor methods.
 
 Although not nearly as full-featured as L<other|Moose> L<solutions|Moo>,
-C<slot> is light-weight, fast, works with basic Perl objects, and imposes no
-dependencies outside of the Perl core distribution. Currently, only the unit
-tests require non-core packages.
+C<Class::Slot> is light-weight, fast, works with basic Perl objects, and
+imposes no dependencies outside of the Perl core distribution. Currently, only
+the unit tests require non-core packages.
 
-C<slot> is intended for use with Perl's bare metal objects. It provides a
-simple mechanism for building accessor and constructor code at compile time.
+C<Class::Slot> is intended for use with Perl's bare metal objects. It provides
+a simple mechanism for building accessor and constructor code at compile time.
 
-It does I<not> provide inheritance; that is done by setting C<@ISA> or via
-the C<base> or C<parent> pragmas.
+It does I<not> provide inheritance; that is done by setting C<@ISA> or via the
+C<base> or C<parent> pragmas.
 
 It does I<not> provide method wrappers; that is done with the C<SUPER>
 pseudo-class.
@@ -48,17 +48,14 @@ slot's name) for each slot declared, with support for type validation.
 
 =head1 @SLOTS
 
-The C<@SLOTS> package variable is added to the declaring package and is a
-list of quoted slot identifiers.
+The C<@SLOTS> package variable is added to the declaring package and is a list
+of quoted slot identifiers.
 
 =head1 CONSTRUCTOR
 
-C<slot> generates a constructor method named C<new>. If there is already an
-existing method with that name, it may be overwritten, depending on the order
-in which C<slot> was imported.
-
-Because slots are declared individually, the constructor as well as the
-accessor methods are generated on the first call to C<new>.
+C<Class::Slot> generates a constructor method named C<new>. If there is already
+an existing method with that name, it may be overwritten, depending on the
+order of execution.
 
 =head1 DECLARING SLOTS
 
@@ -82,7 +79,7 @@ does not validate.
 
 When true, this constructor will croak if the slot is missing from the named
 parameters passed to the constructor. If the slot also declares a
-L<default value|/def>, this attribute is moot.
+L<default|/def> value, this attribute is moot.
 
 =head2 def
 
@@ -101,6 +98,7 @@ parent class' settings are overridden. Any options I<not> included in the
 overriding class' slot declaration remain in effect in the child class.
 
   package A;
+  use Class::Slot;
 
   use slot 'foo', rw => 1;
   use slot 'bar', req => 1, rw => 1;
@@ -108,7 +106,7 @@ overriding class' slot declaration remain in effect in the child class.
   1;
 
   package B;
-
+  use Class::Slot;
   use parent -norequire, 'A';
 
   use slot 'foo', req => 1; # B->foo is req, inherits rw
@@ -121,8 +119,8 @@ overriding class' slot declaration remain in effect in the child class.
 =head2 BEGIN
 
 C<use slot> statements are evaluated by the perl interpreter at the earliest
-possible moment. At this time, C<slot> is still gathering slot declarations and
-the class is not fully assembled.
+possible moment. At this time, C<Class::Slot> is still gathering slot
+declarations and the class is not fully assembled.
 
 =head2 CHECK
 
@@ -131,21 +129,27 @@ declaration adds a C<CHECK> block to the package that installs all generated
 accessor methods in the declaring class. This may additionally trigger any
 parent classes (identified by C<@ISA>) which are not yet complete.
 
+=head2 RUNTIME
+
+If C<CHECK> is not available (for example, because the class was generated in a
+string eval), the generated code will be evaluated at run-time the first time
+the class' C<new> method is called.
+
 =head1 DEBUGGING
 
-Adding C<use slot -debug> to your class will cause C<slot> to print the
+Adding C<use slot -debug> to your class will cause C<Class::Slot> to print the
 generated constructor and accessor code just before it is evaluated.
 
 =head1 PERFORMANCE
 
-C<slot> is designed to be fast and have a low overhead. When available,
+C<Class::Slot> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 slots that are not writable or are writable but have no declared type.
 
 This behavior can be disabled by setting C<$Class::Slot::XS> to a negative
 value, although this must be done in a C<BEGIN> block before declaring any
-slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a positive
-value before running.
+slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a
+positive value before running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<slot>. The test includes multiple setters using a mix of
