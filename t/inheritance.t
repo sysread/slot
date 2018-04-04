@@ -22,7 +22,12 @@ use slot z => sub{1} & StrMatch[qr/[13579]$/], rw => 1; # ensure non-inlined typ
 package main;
 use strict;
 use warnings;
+no warnings 'once';
 use Test::More;
+
+is_deeply \@P1::SLOTS, [qw(x y)],   'P1 @SLOTS';
+is_deeply \@P2::SLOTS, [qw(x y z)], 'P2 @SLOTS';
+is_deeply \@P3::SLOTS, [qw(x y z)], 'P3 @SLOTS';
 
 ok my $p2 = P2->new(x => 10, y => 20, z => 30), 'ctor';
 is $p2->x, 10, 'get slot: x';

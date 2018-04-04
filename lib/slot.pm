@@ -76,15 +76,23 @@ sub import {
           $acc .= "\n";
         }
 
+        my $slots = join ' ', map{ quote_identifier($_) }
+          sort keys %{ $caller->get_slots };
+
         my $pkg  = qq{
 package $caller;
 use Carp;
 no warnings 'redefine';
-BEGIN {
+
+our \@SLOTS;
+
+\@SLOTS = qw($slots);;
+
 $ctor
+
 $acc
-}
-        };
+
+};
 
         if ($DEBUG) {
           print "\n";
@@ -106,12 +114,17 @@ $acc
       },
     };
 
+    eval "CHECK { \$slot::CLASS{$caller}{init}->() if exists \$slot::CLASS{$caller}{init} }";
+    $@ && die $@;
+
+=cut
     # Temporary definition of new that includes code to initialize the class as
     # configured for slots.
     *{ $caller . '::new' } = sub {
       $CLASS{$_[0]}{init}->();
       goto $_[0]->can('new');
     };
+=cut
   }
 
   $CLASS{$caller}{slot}{$name} = {};
