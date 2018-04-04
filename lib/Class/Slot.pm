@@ -500,9 +500,9 @@ slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a
 positive value before running.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
-L<Moo>, and L<slot>. The test includes multiple setters using a mix of
+L<Moo>, and L<Class::Slot>. The test includes multiple setters using a mix of
 inherited, typed and untyped, attributes, which ammortizes the benefit of
-Class::XSAccessor to L<Moo> and L<slot>.
+Class::XSAccessor to L<Moo> and L<Class::Slot>.
 
   |           Rate   moo moose  slot
   | moo   355872/s    --  -51%  -63%
