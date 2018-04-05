@@ -1,5 +1,7 @@
 package Class::Slot;
 
+# TODO support code refs as slot types
+
 use strict;
 use warnings;
 no strict 'refs';
@@ -34,6 +36,11 @@ sub import {
   my $caller = caller;
   my $class  = shift;
   my $name   = shift || return;
+
+  if ($name eq '-debugall') {
+    $DEBUG_ALL = 1;
+    return;
+  }
 
   if ($name eq '-debug') {
     $DEBUG{$caller} = 1;
@@ -168,7 +175,21 @@ sub _build_ctor {
   my $code = qq{
 sub new \{
   my \$class = shift;
-  my \$self  = bless { \@_ }, \$class;
+};
+
+  if (@{ $class . '::ISA' }) {
+    $code .= "  my \$self = \$class->SUPER::new(\@_);\n";
+  } else {
+    $code .= "  my \$self = bless { \@_ }, \$class;\n";
+  }
+
+  $code .= qq{
+  # Skip type validation when called as a SUPER method from a recognized child
+  # class' constructor.
+
+  return \$self
+    if ref(\$self) ne '$class'
+    && exists \$Class::Slot::CLASS{ref(\$self)};
 };
 
   my $slots = $class->get_slots;
@@ -193,7 +214,6 @@ sub new \{
   croak '${class}::$ident did not pass validation as type $type'
     unless !exists \$self->{'$ident'}
         || $check;
-
 };
     }
 
@@ -207,7 +227,7 @@ sub new \{
         $code .= "\$CLASS{$class}{slot}{'$ident'}{def}";
       }
 
-      $code .= " unless exists \$self->{'$ident'};\n";
+      $code .= " unless exists \$self->{'$ident'};";
     }
   }
 
@@ -252,6 +272,8 @@ sub get_slots {
   my %slots;
 
   foreach my $class (@mro) {
+    next unless exists $CLASS{$class};
+
     my @slots = defined $name ? ($name) : @{$CLASS{$class}{slots}};
 
     foreach my $slot (@slots) {
