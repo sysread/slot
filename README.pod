@@ -142,6 +142,9 @@ the class' C<new> method is called.
 Adding C<use Class::Slot -debug> to your class will cause C<Class::Slot> to
 print the generated constructor and accessor code just before it is evaluated.
 
+Adding C<use Class::Slot -debugall> anywhere will cause C<Class::Slot> to emit
+debug messages globally.
+
 =head1 PERFORMANCE
 
 C<Class::Slot> is designed to be fast and have a low overhead. When available,

@@ -10,13 +10,14 @@ use Filter::Simple;
 use Carp;
 
 our $VERSION = '0.01';
-our $DEBUG_ALL;
-our %DEBUG;
-our $XS;
-our $LATE;
-our %CLASS;
-our %TYPE;
-our %C3;
+
+our $DEBUG_ALL; # Enable debugging for all classes
+our %DEBUG;     # Enable debugging for individual classes
+our $XS;        # Class::XSAccessor support
+our $LATE;      # Set to true in INIT to trigger run-time over compile-time behavior
+our %CLASS;     # Class slot data
+our %TYPE;      # Stores type objects outside of %CLASS for easier printf debugging
+our %C3;        # Enable breadth-first resolution for individual classes
 
 BEGIN {
   $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
@@ -37,6 +38,7 @@ sub import {
   my $class  = shift;
   my $name   = shift || return;
 
+  # Handle special parameters
   if ($name eq '-debugall') {
     $DEBUG_ALL = 1;
     return;
@@ -52,7 +54,7 @@ sub import {
     return;
   }
 
-  # Suss out parameters
+  # Suss out slot parameters
   my ($type, %param) = (@_ % 2 == 0)
     ? (undef, @_)
     : @_;
@@ -67,19 +69,27 @@ sub import {
     && !$type->can('inline_check')
     && !$type->can('check');
 
+  # Ensure that the default value is valid if the type is set
   if (exists $param{def} && $type) {
     croak "default value for $name is not a valid $type"
       unless $type->check(ref $param{def} eq 'CODE' ? $param{def}->() : $param{def});
   }
 
+  # Initialize slot storage
   unless (exists $CLASS{$caller}) {
     $C3{$caller} ||= 0;
 
     $CLASS{$caller} = {
-      slot  => {},
-      slots => [],
-      ctor  => undef,
-      init  => sub{
+      slot  => {}, # slot definitions
+      slots => [], # list of slot names
+
+      # Generate initialization code for the class itself. Because all slots
+      # are not yet known, this will be executed in a CHECK block at compile
+      # time. If the class is being generated after CHECK (such as from a
+      # string eval), it will be lazily evaluated the first time 'new' is
+      # called on the class.
+
+      init => sub{
         # Ensure any accessor methods defined by $caller's parent class(es)
         # have been built.
         foreach (@{ $caller . '::ISA' }) {
@@ -88,12 +98,14 @@ sub import {
           }
         }
 
-        # Build constructor and accessor methods
+        # Build constructor
         my $ctor = _build_ctor($caller);
 
+        # Build accessors
         my $acc = join "\n", map{ _build_accessor($caller, $_) }
           keys %{ $caller->get_slots };
 
+        # Build @SLOTS
         my $slots = join ' ', map{ quote_identifier($_) }
           sort keys %{ $caller->get_slots };
 
@@ -105,8 +117,16 @@ use Carp;
 
 our \@SLOTS = qw($slots);
 
+#-------------------------------------------------------------------------------
+# Constructor
+#-------------------------------------------------------------------------------
 $ctor
+
+#-------------------------------------------------------------------------------
+# Accessors
+#-------------------------------------------------------------------------------
 $acc
+
 };
 
         if ($DEBUG_ALL || $DEBUG{$caller}) {
@@ -121,7 +141,7 @@ $acc
           print "\n";
         }
 
-        # Install constructor and accessor methods
+        # Install into calling package
         eval $pkg;
         $@ && die $@;
 
@@ -189,9 +209,7 @@ sub new \{
   $code .= qq{
   # Skip type validation when called as a SUPER method from a recognized child
   # class' constructor.
-
-  return \$self
-    if ref(\$self) ne '$class'
+  return \$self if ref(\$self) ne '$class'
     && exists \$Class::Slot::CLASS{ref(\$self)};
 };
 
@@ -205,7 +223,7 @@ sub new \{
     my $ident = quote_identifier($name);
 
     if ($req && !defined $def) {
-      $code .= "  croak '$ident is a required field' unless exists \$self->{'$ident'};\n";
+      $code .= "\n  croak '$ident is a required field' unless exists \$self->{'$ident'};\n";
     }
 
     if ($type) {
@@ -217,6 +235,7 @@ sub new \{
   croak '${class}::$ident did not pass validation as type $type'
     unless !exists \$self->{'$ident'}
         || $check;
+
 };
     }
 
@@ -230,15 +249,11 @@ sub new \{
         $code .= "\$CLASS{$class}{slot}{'$ident'}{def}";
       }
 
-      $code .= " unless exists \$self->{'$ident'};";
+      $code .= " unless exists \$self->{'$ident'};\n";
     }
   }
 
-  $code .= qq{
-  \$self;
-\};
-
-};
+  $code .= "\n  \$self;\n}\n";
 
   return $code;
 }
@@ -605,6 +620,9 @@ the class' C<new> method is called.
 
 Adding C<use Class::Slot -debug> to your class will cause C<Class::Slot> to
 print the generated constructor and accessor code just before it is evaluated.
+
+Adding C<use Class::Slot -debugall> anywhere will cause C<Class::Slot> to emit
+debug messages globally.
 
 =head1 PERFORMANCE
 
