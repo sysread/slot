@@ -1,7 +1,7 @@
 package Point;
 use Class::Slot;
-use slot 'x', rw => 1;
-use slot 'y', rw => 1;
+slot 'x', rw => 1;
+slot 'y', rw => 1;
 1;
 
 package main;

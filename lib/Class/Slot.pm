@@ -429,11 +429,13 @@ sub install_method {
 #-------------------------------------------------------------------------------
 # Source filter:
 #   * 'use slot' -> 'use Class::Slot'
+#   * 'slot'     -> 'use Class::Slot'
 #   * 'slot::'   -> 'Class::Slot::'
 #-------------------------------------------------------------------------------
 FILTER {
   s/\buse slot\b/use Class::Slot/g;
   s/\bslot::/Class::Slot::/g;
+  s/^slot\b/use Class::Slot/gsm;
 };
 
 1;
@@ -471,9 +473,9 @@ Class::Slot - Simple, efficient, comple-time class declaration
   use Class::Slot;
   use Types::Standard -types;
 
-  use slot x => Int, rw => 1, req => 1;
-  use slot y => Int, rw => 1, req => 1;
-  use slot z => Int, rw => 1, def => 0;
+  slot x => Int, rw => 1, req => 1;
+  slot y => Int, rw => 1, req => 1;
+  slot z => Int, rw => 1, def => 0;
 
   1;
 
@@ -484,7 +486,7 @@ Class::Slot - Simple, efficient, comple-time class declaration
 
 =head1 DESCRIPTION
 
-Similar to the L<fields> pragma, C<use slot> declares individual fields in a
+Similar to the L<fields> pragma, C<slot> declares individual fields in a
 class, building a constructor and slot accessor methods.
 
 Although not nearly as full-featured as L<other|Moose> L<solutions|Moo>,
@@ -564,8 +566,8 @@ overriding class' slot declaration remain in effect in the child class.
   package A;
   use Class::Slot;
 
-  use slot 'foo', rw => 1;
-  use slot 'bar', req => 1, rw => 1;
+  slot 'foo', rw => 1;
+  slot 'bar', req => 1, rw => 1;
 
   1;
 
@@ -573,8 +575,8 @@ overriding class' slot declaration remain in effect in the child class.
   use Class::Slot;
   use parent -norequire, 'A';
 
-  use slot 'foo', req => 1; # B->foo is req, inherits rw
-  use slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
+  slot 'foo', req => 1; # B->foo is req, inherits rw
+  slot 'bar', rw => 0;  # B->bar inherits req, but is no longer rw
 
   1;
 
@@ -582,7 +584,7 @@ overriding class' slot declaration remain in effect in the child class.
 
 =head2 BEGIN
 
-C<use slot> statements are evaluated by the perl interpreter at the earliest
+C<slot> statements are evaluated by the perl interpreter at the earliest
 possible moment. At this time, C<Class::Slot> is still gathering slot
 declarations and the class is not fully assembled.
 

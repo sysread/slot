@@ -13,7 +13,7 @@ use Class::Slot;
 
 use parent -norequire, 'A';
 
-use slot new_B => Int, req => 1;
+slot new_B => Int, req => 1;
 
 1;
 
@@ -36,7 +36,7 @@ use Class::Slot;
 
 use parent -norequire, 'B';
 
-use slot new_B => Any;
+slot new_B => Any;
 
 1;
 

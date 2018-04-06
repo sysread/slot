@@ -1,24 +1,24 @@
 package P1;
 use Class::Slot;
 use Types::Standard -types;
-use slot x => Int, rw => 1;
-use slot y => Int, rw => 1;
+slot x => Int, rw => 1;
+slot y => Int, rw => 1;
 1;
 
 package P2;
 use Class::Slot;
 use Types::Standard -types;
 use parent -norequire, 'P1';
-use slot z => Int, rw => 1;
+slot z => Int, rw => 1;
 1;
 
 package P3;
 use Class::Slot;
 use Types::Standard -types;
 use parent -norequire, 'P1';
-use slot x => StrMatch[qr/[13579]$/], rw => 0, req => 1;
-use slot y => StrMatch[qr/[13579]$/], rw => 1;
-use slot z => sub{1} & StrMatch[qr/[13579]$/], rw => 1; # ensure non-inlined types work
+slot x => StrMatch[qr/[13579]$/], rw => 0, req => 1;
+slot y => StrMatch[qr/[13579]$/], rw => 1;
+slot z => sub{1} & StrMatch[qr/[13579]$/], rw => 1; # ensure non-inlined types work
 1;
 
 
