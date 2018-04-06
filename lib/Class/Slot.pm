@@ -57,6 +57,9 @@ sub import {
     ? (undef, @_)
     : @_;
 
+  $type = Class::Slot::AnonType->new($type)
+    if ref $type eq 'CODE';
+
   croak "slot ${name}'s type is invalid"
     if defined $type
     && !ref $type
@@ -435,6 +438,26 @@ FILTER {
 
 1;
 
+package Class::Slot::AnonType;
+
+use strict;
+use warnings;
+use Carp;
+
+use overload
+  '""' => sub{ '(anon code type)' };
+
+sub new {
+  my ($class, $code) = @_;
+  bless $code, $class;
+}
+
+sub can_be_inlined { 0 }
+sub inline_check { croak 'not supported' }
+sub check { goto $_[0] }
+
+1;
+
 __END__
 
 =head1 NAME
@@ -504,8 +527,9 @@ type. The type is validated during construction and in the setter, if the slot
 is read-write.
 
 Slot names must be valid perl identifiers suitable for subroutine names. Types
-must be an instance of a class that supports the C<can_be_inlined>,
-C<inline_check>, and C<check> methods (see L<Type::Tiny/Inlining methods>).
+must be either a code ref which returns true for valid values or an instance of
+a class that supports the C<can_be_inlined>, C<inline_check>, and C<check>
+methods (see L<Type::Tiny/Inlining methods>).
 
 =head1 OPTIONS
 

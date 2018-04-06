@@ -6,7 +6,7 @@ use Types::Standard -types;
 use slot foo => Int, rw => 1, def => 42;
 use slot bar => Str, req => 1;
 use slot baz => req => 1, def => 'fnord';
-use slot 'foo $bar';
+use slot 'foo $bar' => sub{ !defined $_[0] };
 
 1;
 
@@ -37,6 +37,7 @@ is $o->foo, 4, 'slot remains set';
 # Validation
 ok do{ local $@; eval{ A->new(foo => 1, baz => 2) }; $@ }, 'ctor dies w/o req arg';
 ok do{ local $@; eval{ A->new(bar => 'bar', foo => 'not an int') }; $@ }, 'ctor dies on invalid type';
+ok do{ local $@; eval{ A->new(foo => 1, bar => 'two', foo_bar => 1) }; $@ }, 'ctor dies on invalid anon type';
 
 ok $o = A->new(bar => 'asdf'), 'ctor w/o def args';
 is $o->foo, 42, 'get slot w/ def';
