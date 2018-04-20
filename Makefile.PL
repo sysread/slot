@@ -25,19 +25,19 @@ WriteMakefile(
   PREREQ_PRINT     => 1,
 
   META_MERGE => {
-   resources => {
+    resources => {
       homepage => "https://github.com/sysread/slot",
 
       bugtracker => {
-         web => "https://github.com/sysread/slot/issues"
+        web => "https://github.com/sysread/slot/issues"
       },
 
       repository => {
-         type => "git",
-         url  => "https://github.com/sysread/slot.git",
-         web  => "https://github.com/sysread/slot"
+        type => "git",
+        url  => "https://github.com/sysread/slot.git",
+        web  => "https://github.com/sysread/slot"
       }
-   },
+    },
   },
 
   MAN3PODS => {
@@ -62,7 +62,7 @@ WriteMakefile(
   },
 
   PREREQ_PM => {
-    'Carp'           => 0,
+    'Carp' => 0,
     'Filter::Simple' => 0,
   },
 );

@@ -4,8 +4,10 @@ package Class::Slot;
 
 use strict;
 use warnings;
+
 no strict 'refs';
 no warnings 'redefine';
+
 use Filter::Simple;
 use Carp;
 
