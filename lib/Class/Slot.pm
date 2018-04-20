@@ -548,6 +548,16 @@ must be either a code ref which returns true for valid values or an instance of
 a class that supports the C<can_be_inlined>, C<inline_check>, and C<check>
 methods (see L<Type::Tiny/Inlining methods>).
 
+The C<slot> pragma may be used as either a keyword or a pragma. The following
+are equivalent:
+
+  use Class::Slot x => Int;
+  use slot x => Int;
+  slot x => Int;
+
+A simple source filter is used to translate uses of C<slot> and C<use slot>
+into C<use Class::Slot>.
+
 =head1 OPTIONS
 
 =head2 rw
