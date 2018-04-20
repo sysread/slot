@@ -11,13 +11,13 @@ use Carp;
 
 our $VERSION = '0.01';
 
-our $DEBUG_ALL; # Enable debugging for all classes
-our %DEBUG;     # Enable debugging for individual classes
-our $XS;        # Class::XSAccessor support
-our $LATE;      # Set to true in INIT to trigger run-time over compile-time behavior
-our %CLASS;     # Class slot data
-our %TYPE;      # Stores type objects outside of %CLASS for easier printf debugging
-our %C3;        # Enable breadth-first resolution for individual classes
+our $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG}; # Enable debugging for all classes
+our %DEBUG;                              # Enable debugging for individual classes
+our $XS;                                 # Class::XSAccessor support
+our $LATE;                               # Set to true in INIT to trigger run-time over compile-time behavior
+our %CLASS;                              # Class slot data
+our %TYPE;                               # Stores type objects outside of %CLASS for easier printf debugging
+our %C3;                                 # Enable breadth-first resolution for individual classes
 
 BEGIN {
   $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
@@ -633,6 +633,9 @@ print the generated constructor and accessor code just before it is evaluated.
 
 Adding C<use Class::Slot -debugall> anywhere will cause C<Class::Slot> to emit
 debug messages globally.
+
+These may be set from the shell with the C<CLASS_SLOT_DEBUG> environmental
+variable.
 
 =head1 PERFORMANCE
 
