@@ -8,6 +8,7 @@ use warnings;
 no strict 'refs';
 no warnings 'redefine';
 
+use Scalar::Util qw(refaddr);
 use Filter::Simple;
 use Carp;
 
@@ -177,8 +178,9 @@ CHECK {
   $CLASS{$caller}{slot}{$name} = {};
 
   if (defined $type) {
-    $CLASS{$caller}{slot}{$name}{type} = "$type";
-    $TYPE{"$type"} = $type;
+    my $addr = refaddr $type;
+    $CLASS{$caller}{slot}{$name}{type} = $addr;
+    $TYPE{$addr} = $type;
   }
 
   foreach (qw(def req rw)) {
@@ -231,7 +233,7 @@ sub new \{
     if ($type) {
       my $check = $type->can_be_inlined
         ? $type->inline_check("\$self->{'$ident'}")
-        : "\$Class::Slot::TYPE{'$type'}->check(\$self->{'$ident'})";
+        : "\$Class::Slot::TYPE{'$slot->{type}'}->check(\$self->{'$ident'})";
 
       $code .= qq{
   croak '${class}::$ident did not pass validation as type $type'

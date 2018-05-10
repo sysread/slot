@@ -1,2 +1,5 @@
-{{$NEXT}}
+0.02    2018-05-10
+-bugfix: indexed slot types' keys may not be unique (RT #125297, credit: TOBYINK)
+
+0.01    2018-04-20
 -Initial release

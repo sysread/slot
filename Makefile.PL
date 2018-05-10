@@ -62,8 +62,9 @@ WriteMakefile(
   },
 
   PREREQ_PM => {
-    'Carp' => 0,
+    'Carp'           => 0,
     'Filter::Simple' => 0,
+    'Scalar::Util'   => 0,
   },
 );
 
