@@ -1,3 +1,6 @@
+0.04    2018-05-11
+-*correctly* increment MIN_PERL_VERSION and fix bugtracker metadata (credit: Dan Book)
+
 0.03    2018-05-11
 -increment MIN_PERL_VERSION to 5.82 as older perls do not support 'goto &ref'
 
