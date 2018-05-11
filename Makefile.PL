@@ -21,10 +21,11 @@ WriteMakefile(
   VERSION_FROM     => "lib/Class/Slot.pm",
   ABSTRACT_FROM    => 'README.pod',
   LICENSE          => 'perl_5',
-  MIN_PERL_VERSION => '5.0082',
+  MIN_PERL_VERSION => '5.008002',
   PREREQ_PRINT     => 1,
 
   META_MERGE => {
+    'meta-spec' => { version => 2 },
     resources => {
       homepage => "https://github.com/sysread/slot",
 
