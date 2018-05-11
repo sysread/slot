@@ -21,7 +21,7 @@ WriteMakefile(
   VERSION_FROM     => "lib/Class/Slot.pm",
   ABSTRACT_FROM    => 'README.pod',
   LICENSE          => 'perl_5',
-  MIN_PERL_VERSION => '5.008',
+  MIN_PERL_VERSION => '5.0082',
   PREREQ_PRINT     => 1,
 
   META_MERGE => {
