@@ -166,8 +166,8 @@ $acc
     else {
       eval qq{
 CHECK {
-  \$Class::Slot::CLASS{$caller}{init}->()
-    if exists \$Class::Slot::CLASS{$caller}{init};
+  \$Class::Slot::CLASS{'$caller'}{init}->()
+    if exists \$Class::Slot::CLASS{'$caller'}{init};
 }
 };
 
@@ -247,10 +247,10 @@ sub new \{
       $code .= "  \$self->{'$ident'} = ";
 
       if (ref $def eq 'CODE') {
-        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}->(\$self)";
+        $code .= "\$CLASS{'$class'}{slot}{'$ident'}{def}->(\$self)";
       }
       else {
-        $code .= "\$CLASS{$class}{slot}{'$ident'}{def}";
+        $code .= "\$CLASS{'$class'}{slot}{'$ident'}{def}";
       }
 
       $code .= " unless exists \$self->{'$ident'};\n";
