@@ -12,7 +12,7 @@ use Scalar::Util qw(refaddr);
 use Filter::Simple;
 use Carp;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 our $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG}; # Enable debugging for all classes
 our %DEBUG;                              # Enable debugging for individual classes
