@@ -1,7 +1,5 @@
 package Class::Slot;
 
-# TODO support code refs as slot types
-
 use strict;
 use warnings;
 
@@ -12,7 +10,7 @@ use Scalar::Util qw(refaddr);
 use Filter::Simple;
 use Carp;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG}; # Enable debugging for all classes
 our %DEBUG;                              # Enable debugging for individual classes
