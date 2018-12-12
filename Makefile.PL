@@ -58,8 +58,9 @@ WriteMakefile(
   },
 
   TEST_REQUIRES => {
-    'Type::Tiny' => 0,
-    'Test::More' => 0,
+    'Test::More'      => 0,
+    'Type::Tiny'      => 0,
+    'Types::Standard' => 0,
   },
 
   PREREQ_PM => {
