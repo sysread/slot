@@ -1,4 +1,6 @@
 {{$NEXT}}
+
+0.08 2020-02-07
 -new feature: method delegation to slot types
 -bugfix: classes with no members were never initialized
 
