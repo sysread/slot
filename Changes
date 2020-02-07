@@ -2,6 +2,7 @@
 -new feature: slot errors retain line number where slot was defined
 -migrate tests to Test2
 -bugfix: XS code-ref type checks are no longer failing
+-bugfix: CLASS_SLOT_NO_XS not longer thinks that it is opposite day
 
 0.07    2018-12-12
 -bugfix: missing test dep
