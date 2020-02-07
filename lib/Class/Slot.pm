@@ -32,65 +32,36 @@ BEGIN {
 
 INIT {
   $LATE = 1;
+
+  # When multiple packages are defined in a single file or top-level string
+  # eval, they will generate a definition before INIT is called. If they refer
+  # to each other, one may call a method of the other before the class' init
+  # has been called.
+  #
+  # To handle this case, we scan the %CLASS definitions for classes which have
+  # been defined but not yet initialized - that is, they are in %CLASS but the
+  # 'init' function hasn't been run yet (it deletes itself when it completes) -
+  # and then run those classes' initializers..
+  for my $class (keys %CLASS) {
+    next unless exists $Class::Slot::CLASS{$class}{init};
+
+    *{$class. '::new'} = sub {
+      $Class::Slot::CLASS{$class}{init}->();
+      goto $class->can('new');
+    };
+  }
 }
 
 sub import {
   my $class = shift;
-  my $name  = shift || return;
+  my $name  = shift;
   my ($caller, $file, $line) = caller;
 
-  # Handle special parameters
-  if ($name eq '-debugall') {
-    $DEBUG_ALL = 1;
-    return;
-  }
-
-  if ($name eq '-debug') {
-    $DEBUG{$caller} = 1;
-    return;
-  }
-
-  if ($name =~ /^c3$/i) {
-    $C3{$caller} = 1;
-    return;
-  }
-
-  # Suss out slot parameters
-  my ($type, %param) = (@_ % 2 == 0)
-    ? (undef, @_)
-    : @_;
-
-  $type = Class::Slot::AnonType->new($type)
-    if ref $type eq 'CODE';
-
-  croak "slot ${name}'s type is invalid"
-    if defined $type
-    && !ref $type
-    && !$type->can('can_be_inlined')
-    && !$type->can('inline_check')
-    && !$type->can('check');
-
-  # Ensure that the default value is valid if the type is set
-  if (exists $param{def} && $type) {
-    croak "default value for $name is not a valid $type"
-      unless $type->check(ref $param{def} eq 'CODE' ? $param{def}->() : $param{def});
-  }
-
-  # Validate that delegate methods are defined as an array or hash ref
-  if (exists $param{fwd}) {
-    croak "delegate forwarding for $name must be expressed as an array ref or hash ref"
-      if ref($param{fwd}) !~ /^(?:ARRAY)|(?:HASH)$/;
-
-    if (ref $param{fwd} eq 'ARRAY') {
-      my %tmp;
-      $tmp{$_} = $_ for @{$param{fwd}};
-      $param{fwd} = \%tmp;
-    }
-  }
-
-  # Initialize slot storage
+  # Initialize the class
   unless (exists $CLASS{$caller}) {
     $C3{$caller} ||= 0;
+
+    *{ $caller . '::get_slots' } = \&get_slots;
 
     $CLASS{$caller} = {
       slot  => {}, # slot definitions
@@ -194,26 +165,75 @@ CHECK {
     }
   }
 
-  $CLASS{$caller}{slot}{$name} = {
-    pkg  => $caller,
-    file => $file,
-    line => $line,
-  };
+  if (defined $name) {
+    # Handle special parameters
+    if ($name eq '-debugall') {
+      $DEBUG_ALL = 1;
+      return;
+    }
 
-  if (defined $type) {
-    my $addr = refaddr $type;
-    $CLASS{$caller}{slot}{$name}{type} = $addr;
-    $TYPE{$addr} = $type;
+    if ($name eq '-debug') {
+      $DEBUG{$caller} = 1;
+      return;
+    }
+
+    if ($name =~ /^c3$/i) {
+      $C3{$caller} = 1;
+      return;
+    }
+
+    # Suss out slot parameters
+    my ($type, %param) = (@_ % 2 == 0)
+      ? (undef, @_)
+      : @_;
+
+    $type = Class::Slot::AnonType->new($type)
+      if ref $type eq 'CODE';
+
+    croak "slot ${name}'s type is invalid"
+      if defined $type
+      && !ref $type
+      && !$type->can('can_be_inlined')
+      && !$type->can('inline_check')
+      && !$type->can('check');
+
+    # Ensure that the default value is valid if the type is set
+    if (exists $param{def} && $type) {
+      croak "default value for $name is not a valid $type"
+        unless $type->check(ref $param{def} eq 'CODE' ? $param{def}->() : $param{def});
+    }
+
+    # Validate that delegate methods are defined as an array or hash ref
+    if (exists $param{fwd}) {
+      croak "delegate forwarding for $name must be expressed as an array ref or hash ref"
+        if ref($param{fwd}) !~ /^(?:ARRAY)|(?:HASH)$/;
+
+      if (ref $param{fwd} eq 'ARRAY') {
+        my %tmp;
+        $tmp{$_} = $_ for @{$param{fwd}};
+        $param{fwd} = \%tmp;
+      }
+    }
+
+    $CLASS{$caller}{slot}{$name} = {
+      pkg  => $caller,
+      file => $file,
+      line => $line,
+    };
+
+    if (defined $type) {
+      my $addr = refaddr $type;
+      $CLASS{$caller}{slot}{$name}{type} = $addr;
+      $TYPE{$addr} = $type;
+    }
+
+    for (qw(def req rw fwd)) {
+      $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
+        if exists $param{$_};
+    }
+
+    push @{ $CLASS{$caller}{slots} }, $name;
   }
-
-  for (qw(def req rw fwd)) {
-    $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
-      if exists $param{$_};
-  }
-
-  *{ $caller . '::get_slots' } = \&get_slots;
-
-  push @{ $CLASS{$caller}{slots} }, $name;
 }
 
 #-------------------------------------------------------------------------------

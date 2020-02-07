@@ -1,6 +1,6 @@
 {{$NEXT}}
 -new feature: method delegation to slot types
--TODO: bugfix: class code never applied to classes without slots
+-bugfix: classes with no members were never initialized
 
 0.07 2020-02-07
 -new feature: slot errors retain line number where slot was defined

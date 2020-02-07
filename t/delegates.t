@@ -3,8 +3,7 @@ BEGIN{ $ENV{CLASS_SLOT_NO_XS} = 1 };
 
 package Class_A;
 use Class::Slot;
-slot 'x', def => 42;
-sub foo{ $_[0]->x }
+sub foo{ 42 }
 1;
 
 
@@ -12,6 +11,7 @@ package Class_B;
 use Class::Slot;
 slot 'bar', def => sub{ Class_A->new }, fwd => ['foo'];
 slot 'baz', def => sub{ Class_A->new }, fwd => {bat => 'foo'};
+1;
 
 
 package main;
