@@ -1,4 +1,5 @@
 {{$NEXT}}
+-new feature: slot errors retain line number where slot was defined
 -migrate tests to Test2
 -bugfix: XS code-ref type checks are no longer failing
 

@@ -3,7 +3,7 @@ package Class_A;
 use strict;
 use warnings;
 
-use Class::Slot -debug;
+use Class::Slot;
 use Scalar::Util qw(looks_like_number);
 
 slot foo => \&looks_like_number, rw => 1, def => 42;

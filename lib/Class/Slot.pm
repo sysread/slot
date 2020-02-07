@@ -34,9 +34,9 @@ INIT {
 }
 
 sub import {
-  my $caller = caller;
-  my $class  = shift;
-  my $name   = shift || return;
+  my $class = shift;
+  my $name  = shift || return;
+  my ($caller, $file, $line) = caller;
 
   # Handle special parameters
   if ($name eq '-debugall') {
@@ -92,7 +92,7 @@ sub import {
       init => sub{
         # Ensure any accessor methods defined by $caller's parent class(es)
         # have been built.
-        foreach (@{ $caller . '::ISA' }) {
+        for (@{ $caller . '::ISA' }) {
           if (exists $CLASS{$_} && defined $CLASS{$_}{init}) {
             $CLASS{$_}{init}->();
           }
@@ -102,15 +102,13 @@ sub import {
         my $ctor = _build_ctor($caller);
 
         # Build accessors
-        my $acc = join "\n", map{ _build_accessor($caller, $_) }
-          keys %{ $caller->get_slots };
+        my $acc = join "\n", map{ _build_accessor($caller, $_) } keys %{ $caller->get_slots };
 
         # Build @SLOTS
         my $slots = join ' ', map{ quote_identifier($_) }
           sort keys %{ $caller->get_slots };
 
-        my $pkg  = qq{
-package $caller;
+        my $pkg  = qq{package $caller;
 no warnings 'redefine';
 no Class::Slot;
 use Carp;
@@ -125,9 +123,7 @@ $ctor
 #-------------------------------------------------------------------------------
 # Accessors
 #-------------------------------------------------------------------------------
-$acc
-
-};
+$acc};
 
         if ($DEBUG_ALL || $DEBUG{$caller}) {
           print "\n";
@@ -162,6 +158,7 @@ $acc
     # the entire class has been loaded.
     else {
       eval qq{
+# line $line "$file"
 CHECK {
   \$Class::Slot::CLASS{'$caller'}{init}->()
     if exists \$Class::Slot::CLASS{'$caller'}{init};
@@ -172,7 +169,11 @@ CHECK {
     }
   }
 
-  $CLASS{$caller}{slot}{$name} = {};
+  $CLASS{$caller}{slot}{$name} = {
+    pkg  => $caller,
+    file => $file,
+    line => $line,
+  };
 
   if (defined $type) {
     my $addr = refaddr $type;
@@ -180,7 +181,7 @@ CHECK {
     $TYPE{$addr} = $type;
   }
 
-  foreach (qw(def req rw)) {
+  for (qw(def req rw)) {
     $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
       if exists $param{$_};
   }
@@ -196,15 +197,14 @@ CHECK {
 sub _build_ctor {
   my $class = shift;
 
-  my $code = qq{
-sub new \{
+  my $code = qq{sub new \{
   my \$class = shift;
 };
 
   my $has_parents = @{ $class . '::ISA' };
 
   my $can_ctor = 0;
-  foreach (@{ $class . '::ISA' }) {
+  for (@{ $class . '::ISA' }) {
     if ($_->can('new')) {
       $can_ctor = 1;
       last;
@@ -219,23 +219,22 @@ sub new \{
   }
 
   $code .= qq{
-  # Skip type validation when called as a SUPER method from a recognized child
-  # class' constructor.
-  return \$self if ref(\$self) ne '$class'
-    && exists \$Class::Slot::CLASS{ref(\$self)};
+  # Skip type validation when called as a SUPER method from a recognized child class' constructor.
+  return \$self if ref(\$self) ne '$class' && exists \$Class::Slot::CLASS{ref(\$self)};
 };
 
   my $slots = $class->get_slots;
 
-  foreach my $name (keys %$slots) {
+  for my $name (keys %$slots) {
     my $slot  = $slots->{$name};
+    my $line  = qq{# line $slot->{line} "$slot->{file}"};
     my $req   = $slot->{req};
     my $def   = $slot->{def};
     my $type  = $TYPE{$slot->{type}} if exists $slot->{type};
     my $ident = quote_identifier($name);
 
     if ($req && !defined $def) {
-      $code .= "\n  croak '$ident is a required field' unless exists \$self->{'$ident'};\n";
+      $code .= "\n$line\n  croak '$ident is a required field' unless exists \$self->{'$ident'};\n";
     }
 
     if ($type) {
@@ -244,29 +243,23 @@ sub new \{
         ? $type->inline_check("\$self->{'$ident'}")
         : "\$Class::Slot::TYPE{'$addr'}->check(\$self->{'$ident'})";
 
-      $code .= qq{
-  croak '${class}::$ident did not pass validation as type $type'
-    unless !exists \$self->{'$ident'}
-        || $check;
+      $code .= qq{$line
+  croak '${class}::$ident did not pass validation as type $type' unless !exists \$self->{'$ident'} || $check;
 
 };
     }
 
     if (defined $def) {
-      $code .= "  \$self->{'$ident'} = ";
-
-      if (ref $def eq 'CODE') {
-        $code .= "\$CLASS{'$class'}{slot}{'$ident'}{def}->(\$self)";
-      }
-      else {
-        $code .= "\$CLASS{'$class'}{slot}{'$ident'}{def}";
-      }
+      $code .= "$line\n  \$self->{'$ident'} = ";
+      $code .= (ref $def eq 'CODE')
+        ? "\$CLASS{'$class'}{slot}{'$ident'}{def}->(\$self)"
+        : "\$CLASS{'$class'}{slot}{'$ident'}{def}";
 
       $code .= " unless exists \$self->{'$ident'};\n";
     }
   }
 
-  $code .= "\n  \$self;\n}\n";
+  $code .= "  \$self;\n}\n";
 
   return $code;
 }
@@ -302,17 +295,17 @@ sub get_slots {
   my @mro = get_mro $class;
   my %slots;
 
-  foreach my $class (@mro) {
+  for my $class (@mro) {
     next unless exists $CLASS{$class};
 
     my @slots = defined $name ? ($name) : @{$CLASS{$class}{slots}};
 
-    foreach my $slot (@slots) {
+    for my $slot (@slots) {
       if (!exists $slots{$slot}) {
         $slots{$slot} = $CLASS{$class}{slot}{$slot};
       }
       else {
-        foreach my $cfg (qw(rw req def)) {
+        for my $cfg (qw(rw req def line file)) {
           if (!exists $slots{$slot}{$cfg} && exists $CLASS{$class}{slot}{$slot}{$cfg}) {
             $slots{$slot}{$cfg} = $CLASS{$class}{slot}{$slot}{$cfg};
           }
@@ -363,13 +356,12 @@ sub _build_getter_xs {
 sub _build_getter_pp {
   my ($class, $name) = @_;
   my $ident = quote_identifier($name);
-  return qq{
-sub $ident \{
-  croak "${class}::$ident is protected"
-    if \@_ > 1;
-
-  return \$_[0]->{'$ident'}
-    if defined wantarray;
+  my $slot  = $class->get_slots($name);
+  my $line  = qq{# line $slot->{line} "$slot->{file}"};
+  return qq{sub $ident \{
+$line
+  croak "${class}::$ident is protected" if \@_ > 1;
+  return \$_[0]->{'$ident'} if defined wantarray;
 \}
 };
 }
@@ -395,6 +387,7 @@ sub _build_setter_xs {
 sub _build_setter_pp {
   my ($class, $name) = @_;
   my $slot  = $class->get_slots($name);
+  my $line  = qq{# line $slot->{line} "$slot->{file}"};
   my $type  = $TYPE{$slot->{type}} if $slot->{type};
   my $ident = quote_identifier($name);
 
@@ -407,17 +400,15 @@ sub _build_setter_pp {
       : "\$Class::Slot::TYPE{'$addr'}->check(\$_[1])";
 
       $code .= qq{
-    croak '${class}::$ident did not pass validation as type $type'
-      unless $check;
+$line
+    croak '${class}::$ident did not pass validation as type $type' unless $check;
 };
   }
 
-  $code .= qq{
-    \$_[0]->{'$ident'} = \$_[1];
+  $code .= qq{    \$_[0]->{'$ident'} = \$_[1];
   \}
 
-  return \$_[0]->{'$ident'}
-    if defined wantarray;
+  return \$_[0]->{'$ident'} if defined wantarray;
 \}
 };
 }
@@ -464,10 +455,11 @@ sub install_method {
 FILTER {
   s/\buse slot\b/use Class::Slot/g;
   s/\bslot::/Class::Slot::/g;
-  s/^slot\b/use Class::Slot/gsm;
+  s/^\s*slot\b/use Class::Slot/gsm;
 };
 
 1;
+
 
 package Class::Slot::AnonType;
 
@@ -570,7 +562,19 @@ are equivalent:
   slot x => Int;
 
 A simple source filter is used to translate uses of C<slot> and C<use slot>
-into C<use Class::Slot>.
+into C<use Class::Slot>. This is a somewhat brittle solution to ensuring
+compile time code generation while avoiding a clash with
+L<Tie::Hash::KeysMask>, which uses the C<slot> namespace internally but
+nevertheless holds the keys to it on CPAN.
+
+As a result, care must be taken when defining slots using the C<slot name ...>
+syntax (rather than C<use Class::Slot name ...>). The source filter identifies
+the keyword C<slot> when it appears as the first value on a line, followed by
+a word boundary. There is the potential for false positives, such as with:
+
+  my @ots = qw(
+    slot blot glot clot
+  );
 
 =head1 OPTIONS
 

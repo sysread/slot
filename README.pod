@@ -85,7 +85,19 @@ are equivalent:
   slot x => Int;
 
 A simple source filter is used to translate uses of C<slot> and C<use slot>
-into C<use Class::Slot>.
+into C<use Class::Slot>. This is a somewhat brittle solution to ensuring
+compile time code generation while avoiding a clash with
+L<Tie::Hash::KeysMask>, which uses the C<slot> namespace internally but
+nevertheless holds the keys to it on CPAN.
+
+As a result, care must be taken when defining slots using the C<slot name ...>
+syntax (rather than C<use Class::Slot name ...>). The source filter identifies
+the keyword C<slot> when it appears as the first value on a line, followed by
+a word boundary. There is the potential for false positives, such as with:
+
+  my @ots = qw(
+    slot blot glot clot
+  );
 
 =head1 OPTIONS
 
