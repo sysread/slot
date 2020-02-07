@@ -1,3 +1,5 @@
+BEGIN{ $ENV{CLASS_SLOT_NO_XS} = 1 };
+
 package P1;
 use Class::Slot;
 use Types::Standard -types;

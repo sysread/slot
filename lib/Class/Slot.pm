@@ -21,9 +21,10 @@ our %C3;                                 # Enable breadth-first resolution for i
 
 BEGIN {
   $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG} ? 1 : 0;
-  $XS = $ENV{CLASS_SLOT_NO_XS} ? 1 : undef;
 
-  unless (defined $XS) {
+  if ($ENV{CLASS_SLOT_NO_XS}) {
+    $XS = 0;
+  } else {
     eval 'use Class::XSAccessor';
     $XS = $@ ? 0 : 1;
   }

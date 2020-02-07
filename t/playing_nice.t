@@ -1,3 +1,5 @@
+BEGIN{ $ENV{CLASS_SLOT_NO_XS} = 1 };
+
 package Class_A;
 
 sub new {
