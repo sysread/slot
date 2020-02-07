@@ -662,10 +662,10 @@ C<Class::Slot> is designed to be fast and have a low overhead. When available,
 L<Class::XSAccessor> is used to generate the class accessors. This applies to
 slots that are not writable or are writable but have no declared type.
 
-This behavior can be disabled by setting C<$Class::Slot::XS> to a negative
-value, although this must be done in a C<BEGIN> block before declaring any
-slots, or by setting the environmental variable C<CLASS_SLOT_NO_XS> to a
-positive value before running.
+This behavior can be disabled by setting C<$Class::Slot::XS> to a falsey value,
+although this must be done in a C<BEGIN> block before declaring any slots, or
+by setting the environmental variable C<CLASS_SLOT_NO_XS> to a truthy value
+before the module is loaded.
 
 A minimal benchmark on my admittedly underpowered system compares L<Moose>,
 L<Moo>, and L<Class::Slot>. The test includes multiple setters using a mix of
