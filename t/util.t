@@ -9,7 +9,7 @@ package main;
 use strict;
 use warnings;
 
-use Test::More;
+use Test2::V0;
 use Class::Slot;
 
 subtest 'quote_identifier' => sub{

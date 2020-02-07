@@ -240,9 +240,10 @@ sub new \{
     }
 
     if ($type) {
+      my $addr = refaddr $type;
       my $check = $type->can_be_inlined
         ? $type->inline_check("\$self->{'$ident'}")
-        : "\$Class::Slot::TYPE{'$slot->{type}'}->check(\$self->{'$ident'})";
+        : "\$Class::Slot::TYPE{'$addr'}->check(\$self->{'$ident'})";
 
       $code .= qq{
   croak '${class}::$ident did not pass validation as type $type'
@@ -401,9 +402,10 @@ sub _build_setter_pp {
   my $code = "sub $ident {\n  if (\@_ > 1) {";
 
   if ($type) {
+    my $addr = refaddr $type;
     my $check = $type->can_be_inlined
       ? $type->inline_check('$_[1]')
-      : "\$Class::Slot::TYPE{'$type'}->check(\$_[1])";
+      : "\$Class::Slot::TYPE{'$addr'}->check(\$_[1])";
 
       $code .= qq{
     croak '${class}::$ident did not pass validation as type $type'
@@ -484,7 +486,11 @@ sub new {
 
 sub can_be_inlined { 0 }
 sub inline_check { croak 'not supported' }
-sub check { goto $_[0] }
+#sub check { goto $_[0] }
+sub check {
+  my $self = shift;
+  $self->(shift);
+}
 
 1;
 

@@ -54,11 +54,11 @@ WriteMakefile(
   },
 
   BUILD_REQUIRES => {
-    'ExtUtils::MakeMaker' => '6.63_03',
+    'ExtUtils::MakeMaker' => '6.64',
   },
 
   TEST_REQUIRES => {
-    'Test::More'      => 0,
+    'Test2::V0'       => 0,
     'Type::Tiny'      => 0,
     'Types::Standard' => 0,
   },
