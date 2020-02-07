@@ -76,6 +76,18 @@ sub import {
       unless $type->check(ref $param{def} eq 'CODE' ? $param{def}->() : $param{def});
   }
 
+  # Validate that delegate methods are defined as an array or hash ref
+  if (exists $param{fwd}) {
+    croak "delegate forwarding for $name must be expressed as an array ref or hash ref"
+      if ref($param{fwd}) !~ /^(?:ARRAY)|(?:HASH)$/;
+
+    if (ref $param{fwd} eq 'ARRAY') {
+      my %tmp;
+      $tmp{$_} = $_ for @{$param{fwd}};
+      $param{fwd} = \%tmp;
+    }
+  }
+
   # Initialize slot storage
   unless (exists $CLASS{$caller}) {
     $C3{$caller} ||= 0;
@@ -99,15 +111,22 @@ sub import {
           }
         }
 
+        my %slots = %{ $caller->get_slots };
+
         # Build constructor
         my $ctor = _build_ctor($caller);
 
         # Build accessors
-        my $acc = join "\n", map{ _build_accessor($caller, $_) } keys %{ $caller->get_slots };
+        my $acc = join "\n", map{ _build_accessor($caller, $_) }
+          keys %slots;
+
+        # Build delegate accessors
+        my $delegates = join "\n", map{ _build_delegates($caller, $_) }
+          keys %slots;
 
         # Build @SLOTS
         my $slots = join ' ', map{ quote_identifier($_) }
-          sort keys %{ $caller->get_slots };
+          sort keys %slots;
 
         my $pkg  = qq{package $caller;
 no warnings 'redefine';
@@ -124,7 +143,12 @@ $ctor
 #-------------------------------------------------------------------------------
 # Accessors
 #-------------------------------------------------------------------------------
-$acc};
+$acc
+
+#-------------------------------------------------------------------------------
+# Delegate accessors
+#-------------------------------------------------------------------------------
+$delegates};
 
         if ($DEBUG_ALL || $DEBUG{$caller}) {
           print "\n";
@@ -182,7 +206,7 @@ CHECK {
     $TYPE{$addr} = $type;
   }
 
-  for (qw(def req rw)) {
+  for (qw(def req rw fwd)) {
     $CLASS{$caller}{slot}{$name}{$_} = $param{$_}
       if exists $param{$_};
   }
@@ -324,6 +348,28 @@ sub get_slots {
   } else {
     return \%slots;
   }
+}
+
+#-------------------------------------------------------------------------------
+# Delegate methods
+#-------------------------------------------------------------------------------
+sub _build_delegates {
+  my ($class, $name) = @_;
+  my $slot = $class->get_slots($name);
+  return '' unless exists $slot->{fwd};
+
+  my $fwd   = $slot->{fwd};
+  my $line  = qq{# line $slot->{line} "$slot->{file}"};
+  my $ident = quote_identifier($name);
+  my $code  = '';
+
+  for (keys %$fwd) {
+    my $local_method  = quote_identifier($_);
+    my $remote_method = quote_identifier($fwd->{$_});
+    $code .= "$line\nsub $local_method { shift->${ident}->${remote_method}(\@_) }";
+  }
+
+  return $code;
 }
 
 #-------------------------------------------------------------------------------
@@ -600,6 +646,51 @@ constructor.
 If the default is a code ref which generates a value and a type is specified,
 note that the code ref will be called during compilation to validate its type
 rather than re-validating it with every accessor call.
+
+=head2 fwd
+
+When present, generates delegate accessor methods that forward to a mapped
+method on the object stored in the slot. For example:
+
+  # Foo.pm
+  class Foo;
+
+  sub life{ 42 }
+
+  1;
+
+
+  # Bar.pm
+  class Bar;
+  use Class::Slot;
+  use parent 'Foo';
+
+  slot 'foo', fwd => ['life'];
+
+  1;
+
+
+  # main.pl
+  my $bar = Bar->new(foo => Foo->new);
+  say $bar->life; # calls $bar->foo->life
+
+Alternately, C<fwd> may be defined as a hash ref mapping new local method
+names to method names in the delegate class:
+
+  # Bar.pm
+  class Bar;
+  use Class::Slot;
+  use parent 'Foo';
+
+  slot 'foo', fwd => {barlife => 'life'};
+
+  1;
+
+
+  # main.pl
+  my $bar = Bar->new(foo => Foo->new);
+  say $bar->barlife; # calls $bar->foo->life
+  say $bar->life;    # dies: method not found
 
 =head1 INHERITANCE
 
