@@ -61,6 +61,7 @@ WriteMakefile(
     'Test2::V0'       => 0,
     'Type::Tiny'      => 0,
     'Types::Standard' => 0,
+    'parent'          => 0,
   },
 
   PREREQ_PM => {
