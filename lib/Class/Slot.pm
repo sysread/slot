@@ -299,7 +299,7 @@ sub get_slots {
   for my $class (@mro) {
     next unless exists $CLASS{$class};
 
-    my @slots = ($name // @{$CLASS{$class}{slots}});
+    my @slots = defined $name ? ($name) : @{$CLASS{$class}{slots}};
 
     for my $slot (@slots) {
       if (!exists $slots{$slot}) {
