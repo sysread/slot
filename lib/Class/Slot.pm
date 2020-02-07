@@ -1,4 +1,5 @@
 package Class::Slot;
+# ABSTRACT: Simple, efficient, comple-time class declaration
 
 use strict;
 use warnings;
@@ -9,8 +10,6 @@ no warnings 'redefine';
 use Scalar::Util qw(refaddr);
 use Filter::Simple;
 use Carp;
-
-our $VERSION = '0.07';
 
 our $DEBUG_ALL = $ENV{CLASS_SLOT_DEBUG}; # Enable debugging for all classes
 our %DEBUG;                              # Enable debugging for individual classes
@@ -486,7 +485,7 @@ sub new {
 
 sub can_be_inlined { 0 }
 sub inline_check { croak 'not supported' }
-#sub check { goto $_[0] }
+
 sub check {
   my $self = shift;
   $self->(shift);
@@ -495,10 +494,6 @@ sub check {
 1;
 
 __END__
-
-=head1 NAME
-
-Class::Slot - Simple, efficient, comple-time class declaration
 
 =head1 SYNOPSIS
 
@@ -684,16 +679,5 @@ L<Class::XSAccessor> installed.
   | moo   377358/s    --  -50%  -56%
   | moose 757576/s  101%    --  -12%
   | slot  862069/s  128%   14%    --
-
-=head1 AUTHOR
-
-Jeff Ober <sysread@fastmail.fm>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2018 by Jeff Ober.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as the Perl 5 programming language system itself.
 
 =cut

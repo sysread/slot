@@ -1,4 +1,4 @@
-0.08    2020-02-??
+{{$NEXT}}
 -migrate tests to Test2
 -bugfix: XS code-ref type checks are no longer failing
 
