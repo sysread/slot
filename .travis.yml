@@ -14,7 +14,7 @@ env:
 
 matrix:
   include:
-    - perl: 5.18
+    - perl: 5.30
       env: COVERAGE=1 # enables coverage+coveralls reporting
 
 perl:
