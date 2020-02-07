@@ -7,9 +7,10 @@ use warnings;
 
 use Class::Slot;
 use Scalar::Util qw(looks_like_number);
+sub defined_nonref{ defined($_[0]) && !ref($_[0]) }
 
 slot foo => \&looks_like_number, rw => 1, def => 42;
-slot bar => sub{ defined($_[0]) && !ref($_[0]) }, req => 1;
+slot bar => \&defined_nonref, req => 1;
 slot baz => req => 1, def => 'fnord';
 slot 'foo $bar' => sub{ !defined $_[0] };
 
@@ -37,7 +38,6 @@ is $o->foo(4), 4, 'set slot';
 is $o->foo, 4, 'slot remains set';
 
 # Validation
-#ok do{ local $@; eval{ Class_A->new(foo => 1, baz => 2) }; $@ }, 'ctor dies w/o req arg';
 ok dies{ Class_A->new(foo => 1, baz => 2) }, 'ctor dies w/o req arg';
 ok dies{ Class_A->new(bar => 'bar', foo => 'not an int') }, 'ctor dies on invalid type';
 ok dies{ Class_A->new(foo => 1, bar => 'two', foo_bar => 1) }, 'ctor dies on invalid anon type';

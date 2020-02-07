@@ -204,6 +204,7 @@ sub _build_ctor {
 
   my $has_parents = @{ $class . '::ISA' };
 
+  # Look for constructor in inheritence change
   my $can_ctor = 0;
   for (@{ $class . '::ISA' }) {
     if ($_->can('new')) {
@@ -212,8 +213,7 @@ sub _build_ctor {
     }
   }
 
-
-  if ($has_parents && $can_ctor) {
+  if ($can_ctor) {
     $code .= "  my \$self = \$class->SUPER::new(\@_);\n";
   } else {
     $code .= "  my \$self = bless { \@_ }, \$class;\n";
@@ -299,7 +299,7 @@ sub get_slots {
   for my $class (@mro) {
     next unless exists $CLASS{$class};
 
-    my @slots = defined $name ? ($name) : @{$CLASS{$class}{slots}};
+    my @slots = ($name // @{$CLASS{$class}{slots}});
 
     for my $slot (@slots) {
       if (!exists $slots{$slot}) {
