@@ -1,18 +1,21 @@
-branches:
-  except:
-    - /travis/
-
 skip_tags: true
+
+build: off
 
 cache:
   - C:\strawberry
+
+platform:
+  - x86
+  - x64
 
 install:
   - if not exist "C:\strawberry" cinst strawberryperl
   - set PATH=C:\strawberry\perl\bin;C:\strawberry\perl\site\bin;C:\strawberry\c\bin;%PATH%
   - cd C:\projects\%APPVEYOR_PROJECT_NAME%
-  - cpanm --notest --installdeps .
+  - cpanm -n Dist::Zilla
+  - dzil authordeps --missing | cpanm -nq
+  - dzil listdeps --missing | cpanm -nq
 
-build_script:
-  - perl Makefile.PL
-  - gmake test
+test_script:
+  - dzil test
