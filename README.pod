@@ -123,6 +123,51 @@ If the default is a code ref which generates a value and a type is specified,
 note that the code ref will be called during compilation to validate its type
 rather than re-validating it with every accessor call.
 
+=head2 fwd
+
+When present, generates delegate accessor methods that forward to a mapped
+method on the object stored in the slot. For example:
+
+  # Foo.pm
+  class Foo;
+
+  sub life{ 42 }
+
+  1;
+
+
+  # Bar.pm
+  class Bar;
+  use Class::Slot;
+  use parent 'Foo';
+
+  slot 'foo', fwd => ['life'];
+
+  1;
+
+
+  # main.pl
+  my $bar = Bar->new(foo => Foo->new);
+  say $bar->life; # calls $bar->foo->life
+
+Alternately, C<fwd> may be defined as a hash ref mapping new local method
+names to method names in the delegate class:
+
+  # Bar.pm
+  class Bar;
+  use Class::Slot;
+  use parent 'Foo';
+
+  slot 'foo', fwd => {barlife => 'life'};
+
+  1;
+
+
+  # main.pl
+  my $bar = Bar->new(foo => Foo->new);
+  say $bar->barlife; # calls $bar->foo->life
+  say $bar->life;    # dies: method not found
+
 =head1 INHERITANCE
 
 When a class declares a slot which is also declared in the parent class, the
