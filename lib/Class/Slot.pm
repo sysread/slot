@@ -30,32 +30,55 @@ BEGIN {
   }
 }
 
-INIT {
-  $LATE = 1;
+sub is_runtime {
+  unless ($LATE) {
+    local $SIG{__WARN__} = sub{
+      my $msg = shift;
 
-  # When multiple packages are defined in a single file or top-level string
-  # eval, they will generate a definition before INIT is called. If they refer
-  # to each other, one may call a method of the other before the class' init
-  # has been called.
-  #
-  # To handle this case, we scan the %CLASS definitions for classes which have
-  # been defined but not yet initialized - that is, they are in %CLASS but the
-  # 'init' function hasn't been run yet (it deletes itself when it completes) -
-  # and then run those classes' initializers..
-  for my $class (keys %CLASS) {
-    next unless exists $Class::Slot::CLASS{$class}{init};
+      if ($msg =~ /Too late to run CHECK block/) {
+        $LATE = 1;
 
-    *{$class. '::new'} = sub {
-      $Class::Slot::CLASS{$class}{init}->();
-      goto $class->can('new');
+        # When multiple packages are defined in a single file or top-level
+        # string eval, they will generate a definition before CHECK is called.
+        # If they refer to each other, one may call a method of the other
+        # before the class' init has been called.
+        #
+        # To handle this case, we scan the %CLASS definitions for classes which
+        # have been defined but not yet initialized - that is, they are in
+        # %CLASS but the 'init' function hasn't been run yet (it deletes itself
+        # when it completes) - and then run those classes' initializers.
+        for my $class (keys %CLASS) {
+          next unless exists $Class::Slot::CLASS{$class}{init};
+
+          *{$class.'::new'} = sub {
+            $Class::Slot::CLASS{$class}{init}->();
+            goto $class->can('new');
+          };
+        }
+
+        return;
+      }
+
+      CORE::warn($msg);
     };
+
+    eval 'CHECK{ 1 }';
   }
+
+  return $LATE;
 }
 
 sub import {
   my $class = shift;
   my $name  = shift;
   my ($caller, $file, $line) = caller;
+
+  if (is_runtime() && !(ref *{$caller.'::slot'} eq 'CODE')) {
+    *{$caller.'::slot'} = sub{
+      unshift @_, 'Class::Slot';
+      goto \&import;
+    };
+  }
 
   # Initialize the class
   unless (exists $CLASS{$caller}) {
